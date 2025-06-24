@@ -48,6 +48,8 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::i8, &Parasol::IRRegClass);
   addRegisterClass(MVT::i16, &Parasol::IRRegClass);
   addRegisterClass(MVT::i32, &Parasol::IRRegClass);
+  addRegisterClass(MVT::i64, &Parasol::IRRegClass);
+  addRegisterClass(MVT::i128, &Parasol::IRRegClass);
 
   // Must, computeRegisterProperties - Once all of the register classes are
   // added, this allows us to compute derived properties we expose.

@@ -77,4 +77,4 @@ foreach i = 0-63 in {
 // largest to smallest order. Otherwise when put into a register bank during
 // globalisel the size of the register bank will be too small (it seems to
 // choose the first element as the size of the class).
-def IR : RegisterClass<"Parasol", [i32, i16, i8, i1], 32, (sequence "X%u", 0, 63)>;
+def IR : RegisterClass<"Parasol", [i128, i64, i32, i16, i8, i1], 32, (sequence "X%u", 0, 63)>;
