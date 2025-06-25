@@ -141,9 +141,18 @@ class ParasolTruncInst<ValueType to, ValueType from>
 def TRUNC_1_8 : ParasolTruncInst<i1, i8>;
 def TRUNC_1_16 : ParasolTruncInst<i1, i16>;
 def TRUNC_1_32 : ParasolTruncInst<i1, i32>;
+def TRUNC_1_64 : ParasolTruncInst<i1, i64>;
+def TRUNC_1_128 : ParasolTruncInst<i1, i128>;
 def TRUNC_8_16 : ParasolTruncInst<i8, i16>;
 def TRUNC_8_32 : ParasolTruncInst<i8, i32>;
+def TRUNC_8_64 : ParasolTruncInst<i8, i64>;
+def TRUNC_8_128 : ParasolTruncInst<i8, i128>;
 def TRUNC_16_32 : ParasolTruncInst<i16, i32>;
+def TRUNC_16_64 : ParasolTruncInst<i16, i64>;
+def TRUNC_16_128 : ParasolTruncInst<i16, i128>;
+def TRUNC_32_64 : ParasolTruncInst<i32, i64>;
+def TRUNC_32_128 : ParasolTruncInst<i32, i128>;
+def TRUNC_64_128 : ParasolTruncInst<i64, i128>;
 
 class ParasolZExtInst<ValueType to, ValueType from>
     : ParasolInst<(outs IR:$output), (ins IR:$input), "zext", "$output, $input, " # to.Size # ", " # from.Size,
@@ -165,19 +174,37 @@ class ParasolZExtInst<ValueType to, ValueType from>
 def ZEXT_8_1 : ParasolZExtInst<i8, i1>;
 def ZEXT_16_1 : ParasolZExtInst<i16, i1>;
 def ZEXT_32_1 : ParasolZExtInst<i32, i1>;
+def ZEXT_64_1 : ParasolZExtInst<i64, i1>;
+def ZEXT_128_1 : ParasolZExtInst<i128, i1>;
 def ZEXT_16_8 : ParasolZExtInst<i16, i8>;
 def ZEXT_32_8 : ParasolZExtInst<i32, i8>;
+def ZEXT_64_8 : ParasolZExtInst<i64, i8>;
+def ZEXT_128_8 : ParasolZExtInst<i128, i8>;
 def ZEXT_32_16 : ParasolZExtInst<i32, i16>;
+def ZEXT_64_16 : ParasolZExtInst<i64, i16>;
+def ZEXT_128_16 : ParasolZExtInst<i128, i16>;
+def ZEXT_64_32 : ParasolZExtInst<i64, i32>;
+def ZEXT_128_32 : ParasolZExtInst<i128, i32>;
+def ZEXT_128_64 : ParasolZExtInst<i128, i64>;
 
 // Judging from https://github.com/llvm/llvm-project/blob/7470131b43405a07ccafd83aea286d0f35aefb34/llvm/lib/CodeGen/GlobalISel/Utils.cpp#L969-L978
 // anyext is an extension where the higher bits do not matter and the compiler should choose the most efficient instruction from zext and sext
 // here we chose zext
 def : Pat<(i8 (anyext i1:$input)), (ZEXT_8_1 $input)>;
 def : Pat<(i16 (anyext i1:$input)), (ZEXT_16_1 $input)>;
-def : Pat<(i16 (anyext i8:$input)), (ZEXT_16_8 $input)>;
 def : Pat<(i32 (anyext i1:$input)), (ZEXT_32_1 $input)>;
+def : Pat<(i64 (anyext i1:$input)), (ZEXT_64_1 $input)>;
+def : Pat<(i128 (anyext i1:$input)), (ZEXT_128_1 $input)>;
+def : Pat<(i16 (anyext i8:$input)), (ZEXT_16_8 $input)>;
 def : Pat<(i32 (anyext i8:$input)), (ZEXT_32_8 $input)>;
+def : Pat<(i64 (anyext i8:$input)), (ZEXT_64_8 $input)>;
+def : Pat<(i128 (anyext i8:$input)), (ZEXT_128_8 $input)>;
 def : Pat<(i32 (anyext i16:$input)), (ZEXT_32_16 $input)>;
+def : Pat<(i64 (anyext i16:$input)), (ZEXT_64_16 $input)>;
+def : Pat<(i128 (anyext i16:$input)), (ZEXT_128_16 $input)>;
+def : Pat<(i64 (anyext i32:$input)), (ZEXT_64_32 $input)>;
+def : Pat<(i128 (anyext i32:$input)), (ZEXT_128_32 $input)>;
+def : Pat<(i128 (anyext i64:$input)), (ZEXT_128_64 $input)>;
 
 class ParasolSExtInst<ValueType to, ValueType from>
     : ParasolInst<(outs IR:$output), (ins IR:$input), "sext", "$output, $input, " # to.Size # ", " # from.Size,
@@ -199,18 +226,36 @@ class ParasolSExtInst<ValueType to, ValueType from>
 def SEXT_8_1 : ParasolSExtInst<i8, i1>;
 def SEXT_16_1 : ParasolSExtInst<i16, i1>;
 def SEXT_32_1 : ParasolSExtInst<i32, i1>;
+def SEXT_64_1 : ParasolSExtInst<i64, i1>;
+def SEXT_128_1 : ParasolSExtInst<i128, i1>;
 def SEXT_16_8 : ParasolSExtInst<i16, i8>;
 def SEXT_32_8 : ParasolSExtInst<i32, i8>;
+def SEXT_64_8 : ParasolSExtInst<i64, i8>;
+def SEXT_128_8 : ParasolSExtInst<i128, i8>;
 def SEXT_32_16 : ParasolSExtInst<i32, i16>;
+def SEXT_64_16 : ParasolSExtInst<i64, i16>;
+def SEXT_128_16 : ParasolSExtInst<i128, i16>;
+def SEXT_64_32 : ParasolSExtInst<i64, i32>;
+def SEXT_128_32 : ParasolSExtInst<i128, i32>;
+def SEXT_128_64 : ParasolSExtInst<i128, i64>;
 
 // In register sext should also just call our sext operation
 
 def : Pat<(i8 (sext_inreg IR:$input, i1)), (SEXT_8_1 $input)>;
 def : Pat<(i16 (sext_inreg IR:$input, i1)), (SEXT_16_1 $input)>;
-def : Pat<(i16 (sext_inreg IR:$input, i8)), (SEXT_16_8 $input)>;
 def : Pat<(i32 (sext_inreg IR:$input, i1)), (SEXT_32_1 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i1)), (SEXT_64_1 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i1)), (SEXT_128_1 $input)>;
+def : Pat<(i16 (sext_inreg IR:$input, i8)), (SEXT_16_8 $input)>;
 def : Pat<(i32 (sext_inreg IR:$input, i8)), (SEXT_32_8 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i8)), (SEXT_64_8 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i8)), (SEXT_128_8 $input)>;
 def : Pat<(i32 (sext_inreg IR:$input, i16)), (SEXT_32_16 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i16)), (SEXT_64_16 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i16)), (SEXT_128_16 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i32)), (SEXT_64_32 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i32)), (SEXT_128_32 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i64)), (SEXT_128_64 $input)>;
 
 //===----------------------------------------------------------------------===//
 // Branch instructions
