@@ -121,81 +121,15 @@ void ParasolTargetLowering::ReplaceNodeResults(
 //===----------------------------------------------------------------------===//
 //@            Formal Arguments Calling Convention Implementation
 //===----------------------------------------------------------------------===//
-
-// The BeyondRISC calling convention parameter registers.
-static const MCPhysReg GPRArgRegs[] = {Parasol::X10, Parasol::X11, Parasol::X12,
-                                       Parasol::X13, Parasol::X14, Parasol::X15,
-                                       Parasol::X16, Parasol::X17};
-
 bool assignArg(const DataLayout &DL, unsigned ValNo, MVT ValVT, MVT LocVT,
                CCValAssign::LocInfo LocInfo, ISD::ArgFlagsTy ArgFlags,
                CCState &State, bool IsRet, Type *OrigTy,
                const ParasolTargetLowering &TLI) {
-  // We use RISCV's RV32 calling convention.
-  unsigned XLen = 4;
-  unsigned TwoXLen = 8;
-
-  SmallVectorImpl<CCValAssign> &PendingLocs = State.getPendingLocs();
-  SmallVectorImpl<ISD::ArgFlagsTy> &PendingArgFlags =
-      State.getPendingArgFlags();
-
   unsigned ValSize = ValVT.getStoreSize();
   Align ValAlign = Align(ValSize);
 
-  // Handle 8-byte values split over 2 registers.
-  if (ValVT.isScalarInteger() && (ArgFlags.isSplit() || !PendingLocs.empty())) {
-    // If this isn't the last value, store it for later and move to the next
-    // one.
-    if (!ArgFlags.isSplitEnd()) {
-      LocVT = MVT::i32;
-      LocInfo = CCValAssign::Indirect;
-      PendingLocs.push_back(
-          CCValAssign::getPending(ValNo, ValVT, LocVT, LocInfo));
-      PendingArgFlags.push_back(ArgFlags);
-
-      return false;
-    } else {
-      assert(PendingLocs.size() == 1 && "Unexpected PendingLocs.size()");
-      CCValAssign VALLo = PendingLocs[0];
-      ISD::ArgFlagsTy AFLo = PendingArgFlags[0];
-      PendingLocs.clear();
-      PendingArgFlags.clear();
-
-      // Try placing the lo word in a register. Failing that, it goes on the
-      // stack.
-      if (Register Reg = State.AllocateReg(GPRArgRegs)) {
-        State.addLoc(CCValAssign::getReg(VALLo.getValNo(), VALLo.getValVT(),
-                                         Reg, VALLo.getLocVT(),
-                                         CCValAssign::Full));
-      } else {
-        State.addLoc(CCValAssign::getMem(
-            VALLo.getValNo(), VALLo.getValVT(),
-            State.AllocateStack(XLen, Align(AFLo.getNonZeroOrigAlign())),
-            VALLo.getLocVT(), CCValAssign::Full));
-      }
-
-      // Now try placing the hi word. Again, it goes on the stack if no
-      // registers are available.
-      if (Register Reg = State.AllocateReg(GPRArgRegs)) {
-        State.addLoc(
-            CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, CCValAssign::Full));
-      } else {
-        State.addLoc(CCValAssign::getMem(ValNo, ValVT,
-                                         State.AllocateStack(XLen, Align(XLen)),
-                                         LocVT, CCValAssign::Full));
-      }
-    }
-  } else if (ValSize <= 4) { // <= 4-byte values go in a register/stack
-    if (Register Reg = State.AllocateReg(GPRArgRegs)) {
-      State.addLoc(CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, LocInfo));
-    } else {
-      State.addLoc(CCValAssign::getMem(ValNo, ValVT,
-                                       State.AllocateStack(ValSize, ValAlign),
-                                       LocVT, LocInfo));
-    }
-  } else { // Larger values are passed by reference.
-    assert("Unimplemented");
-  }
+  int64_t StackOffset = State.AllocateStack(ValSize, ValAlign);
+  State.addLoc(CCValAssign::getMem(ValNo, ValVT, StackOffset, LocVT, LocInfo));
 
   return false;
 }
@@ -232,8 +166,7 @@ void ParasolTargetLowering::analyzeOutputArgs(
   for (unsigned i = 0; i < Outs.size(); i++) {
     MVT ArgVT = Outs[i].VT;
 
-    Register Reg = CCInfo.AllocateReg(GPRArgRegs);
-    CCInfo.addLoc(CCValAssign::getReg(i, ArgVT, Reg, ArgVT, CCValAssign::Full));
+
   }
 }
 
@@ -298,19 +231,14 @@ static SDValue unpackFromRegLoc(SelectionDAG &DAG, SDValue Chain,
 static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
                                 const CCValAssign &VA, const SDLoc &DL) {
   MachineFunction &MF = DAG.getMachineFunction();
+
   MachineFrameInfo &MFI = MF.getFrameInfo();
   EVT LocVT = VA.getLocVT();
   EVT ValVT = VA.getValVT();
-  EVT PtrVT = MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0));
-  if (ValVT.isScalableVector()) {
-    // When the value is a scalable vector, we save the pointer which points to
-    // the scalable vector value in the stack. The ValVT will be the pointer
-    // type, instead of the scalable vector type.
-    ValVT = LocVT;
-  }
+  
   int FI = MFI.CreateFixedObject(ValVT.getStoreSize(), VA.getLocMemOffset(),
                                  /*IsImmutable=*/true);
-  SDValue FIN = DAG.getFrameIndex(FI, PtrVT);
+  SDValue FIN = DAG.getFrameIndex(FI, MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0)));
   SDValue Val;
 
   ISD::LoadExtType ExtType;
@@ -323,10 +251,9 @@ static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
     ExtType = ISD::NON_EXTLOAD;
     break;
   }
-  Val = DAG.getExtLoad(
+  return DAG.getExtLoad(
       ExtType, DL, LocVT, Chain, FIN,
       MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI), ValVT);
-  return Val;
 }
 
 /// LowerFormalArguments - transform physical registers into virtual registers
@@ -360,12 +287,8 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
     CCValAssign &VA = ArgLocs[i];
     SDValue ArgValue;
 
-    if (VA.isRegLoc()) {
-      ArgValue = unpackFromRegLoc(DAG, Chain, VA, DL, Ins[InsIdx], *this);
-    } else {
-      ArgValue = unpackFromMemLoc(DAG, Chain, VA, DL);
-    }
-
+    ArgValue = unpackFromMemLoc(DAG, Chain, VA, DL);
+    
     InVals.push_back(ArgValue);
   }
 
@@ -468,57 +391,6 @@ ParasolTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
 void ParasolTargetLowering::HandleByVal(CCState *State, unsigned &Size,
                                         Align align) const {
-  // Byval (as with any stack) slots are always at least 4 byte aligned.
-  // TODO: Look into how to replicate this but with the Align type.
-  // align = std::max(align, 4U);
-  align = Align(std::max(align.value(), (uint64_t)4));
-
-  unsigned Reg = State->AllocateReg(GPRArgRegs);
-  if (!Reg)
-    return;
-
-  // TODO: Use of .value() may be wrong here
-  unsigned AlignInRegs = align.value() / 4;
-  unsigned Waste = (Parasol::X4 - Reg) % AlignInRegs;
-  for (unsigned i = 0; i < Waste; ++i)
-    Reg = State->AllocateReg(GPRArgRegs);
-
-  if (!Reg)
-    return;
-
-  unsigned Excess = 4 * (Parasol::X4 - Reg);
-
-  // Special case when NSAA != SP and parameter size greater than size of
-  // all remained GPR regs. In that case we can't split parameter, we must
-  // send it to stack. We also must set NCRN to X4, so waste all
-  // remained registers.
-  // TODO: Check if getStackSize is the replacement for getNextStackOffset
-  // https://reviews.llvm.org/D149566
-  const unsigned NSAAOffset = State->getStackSize();
-  if (NSAAOffset != 0 && Size > Excess) {
-    while (State->AllocateReg(GPRArgRegs))
-      ;
-    return;
-  }
-
-  // First register for byval parameter is the first register that wasn't
-  // allocated before this method call, so it would be "reg".
-  // If parameter is small enough to be saved in range [reg, r4), then
-  // the end (first after last) register would be reg + param-size-in-regs,
-  // else parameter would be splitted between registers and stack,
-  // end register would be r4 in this case.
-  unsigned ByValRegBegin = Reg;
-  unsigned ByValRegEnd = std::min<unsigned>(Reg + Size / 4, Parasol::X4);
-  State->addInRegsParamInfo(ByValRegBegin, ByValRegEnd);
-  // Note, first register is allocated in the beginning of function already,
-  // allocate remained amount of registers we need.
-  for (unsigned i = Reg + 1; i != ByValRegEnd; ++i)
-    State->AllocateReg(GPRArgRegs);
-  // A byval parameter that is split between registers and memory needs its
-  // size truncated here.
-  // In the case where the entire structure fits in registers, we set the
-  // size in memory to zero.
-  Size = std::max<int>(Size - Excess, 0);
 }
 
 SDValue
@@ -614,7 +486,7 @@ SDValue ParasolTargetLowering::LowerOperation(SDValue Op,
   case ISD::ConstantPool:
     return LowerConstantPool(Op, DAG);
   case ISD::RETURNADDR:
-    return LowerRETURNADDR(Op, DAG);
+    return LowerRETURNADDR(Op, DAG);   
   default:
     llvm_unreachable("unimplemented operand");
   }

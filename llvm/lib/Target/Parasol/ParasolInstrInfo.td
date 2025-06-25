@@ -9,6 +9,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Frame index calculations.
+//def FrameAddrRegImm : ComplexPattern<i32, 2, "SelectFrameAddrRegImm",
+//                                     [frameindex]>;
+//def AddrRegImm : ComplexPattern<i32, 2, "SelectAddrRegImm">;
+
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
 //===----------------------------------------------------------------------===//
@@ -53,45 +58,55 @@ def LoadImmediate32 : ParasolLoadImm<Parasolimm32, i32>;
 // Load/Store Instructions
 //===----------------------------------------------------------------------===//
 
-def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size), "ldr", "$val, $addr, $size", []> {
+def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "ldr", "$val, $addr, $offset, $size", []> {
     bits<7> size;
     bits<6> val;
     bits<6> addr;
+    bits<32> offset;
 
     let hasSideEffects = 0;
     let mayLoad = 1;
     let mayStore = 0;
 
+    let Inst{58-27} = offset;
     let Inst{26-20} = size;
     let Inst{19-14} = addr;
     let Inst{13-8} = val;
     let Opcode = OPC_LOAD.Value;
 }
 
-def : Pat<(i1 (load IR:$addr)), (LOAD $addr, 1)>;
-def : Pat<(i8 (load IR:$addr)), (LOAD $addr, 8)>;
-def : Pat<(i16 (load IR:$addr)), (LOAD $addr, 16)>;
-def : Pat<(i32 (load IR:$addr)), (LOAD $addr, 32)>;
+// def : Pat<(i1 (load (AddrRegImm (i32 IR:$addr), Parasolimm32:$offset))), (LOAD $addr, 1, $offset)>;
+def : Pat<(i1 (load IR:$addr)), (LOAD $addr, 8, 0)>;
+def : Pat<(i8 (load IR:$addr)), (LOAD $addr, 8, 0)>;
+def : Pat<(i16 (load IR:$addr)), (LOAD $addr, 16, 0)>;
+def : Pat<(i32 (load IR:$addr)), (LOAD $addr, 32, 0)>;
+def : Pat<(i64 (load IR:$addr)), (LOAD $addr, 64, 0)>;
+def : Pat<(i128 (load IR:$addr)), (LOAD $addr, 128, 0)>;
 
-def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size), "str", "$addr, $val, $size", []> {
+
+def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "str", "$addr, $offset, $val, $size", []> {
     bits<7> size;
     bits<6> val;
     bits<6> addr;
+    bits<32> offset;
 
     let hasSideEffects = 0;
     let mayLoad = 0;
     let mayStore = 1;
 
+    let Inst{58-27} = offset;
     let Inst{26-20} = size;
     let Inst{19-14} = val;
     let Inst{13-8} = addr;
     let Opcode = OPC_STORE.Value;
 }
 
-def : Pat<(store i1:$val , IR:$addr), (STORE $val, $addr, 1)>;
-def : Pat<(store i8:$val , IR:$addr), (STORE $val, $addr, 8)>;
-def : Pat<(store i16:$val, IR:$addr), (STORE $val, $addr, 16)>;
-def : Pat<(store i32:$val, IR:$addr), (STORE $val, $addr, 32)>;
+def : Pat<(store i1:$val , IR:$addr), (STORE $val, $addr, 1, 0)>;
+def : Pat<(store i8:$val , IR:$addr), (STORE $val, $addr, 8, 0)>;
+def : Pat<(store i16:$val, IR:$addr), (STORE $val, $addr, 16, 0)>;
+def : Pat<(store i32:$val, IR:$addr), (STORE $val, $addr, 32, 0)>;
+def : Pat<(store i64:$val, IR:$addr), (STORE $val, $addr, 64, 0)>;
+def : Pat<(store i128:$val, IR:$addr), (STORE $val, $addr, 128, 0)>;
 
 def MOV : ParasolInst<(outs IR:$dst), (ins IR:$src), "mv", "$dst, $src", []> {
     bits<6> dst;
@@ -610,7 +625,7 @@ multiclass PatSelect<ValueType comparisonvt> {
 
     // Convert when you have PR input to load the value first
     def : Pat<(comparisonvt (load (select i1:$bool, IR:$trueval, IR:$falseval))),
-              (CMUXrrr $bool, (LOAD $trueval, comparisonvt.Size), (LOAD $falseval, comparisonvt.Size))>;
+              (CMUXrrr $bool, (LOAD $trueval, comparisonvt.Size, 0), (LOAD $falseval, comparisonvt.Size, 0))>;
 }
 
 defm : PatSelect<i1>;
