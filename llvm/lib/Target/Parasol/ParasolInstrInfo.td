@@ -10,8 +10,9 @@
 //===----------------------------------------------------------------------===//
 
 // Frame index calculations.
-//def FrameAddrRegImm : ComplexPattern<i32, 2, "SelectFrameAddrRegImm",
+//def FrameAddrRegImm : ComplexPattern<iPTR, 2, "SelectFrameAddrRegImm",
 //                                     [frameindex]>;
+
 //def AddrRegImm : ComplexPattern<i32, 2, "SelectAddrRegImm">;
 
 //===----------------------------------------------------------------------===//
@@ -36,11 +37,13 @@ def callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_CallSeqEnd,
 
 include "ParasolInstrFormats.td"
 
-let Defs = [X2], Uses = [X2] in {
+let isCodeGenOnly = 1, Defs = [X2], Uses = [X2] in {
 def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                               [(callseq_start timm:$amt1, timm:$amt2)]>;
 def ADJCALLSTACKUP   : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                               [(callseq_end timm:$amt1, timm:$amt2)]>;
+def ADDframe : Pseudo<(outs IR:$dst), (ins Parasolimm32:$base, Parasolimm32:$offset),
+                      []>;
 } // end Defs = [X2], Uses = [X2]
 
 
@@ -372,6 +375,8 @@ multiclass Pat1IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1), (inst i8:$rs1)>;
     def _16 : Pat<(OpNode i16:$rs1), (inst i16:$rs1)>;
     def _32 : Pat<(OpNode i32:$rs1), (inst i32:$rs1)>;
+    def _64 : Pat<(OpNode i64:$rs1), (inst i64:$rs1)>;
+    def _128 : Pat<(OpNode i128:$rs1), (inst i128:$rs1)>;
 }
 
 multiclass Pat2IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
@@ -379,6 +384,8 @@ multiclass Pat2IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1, i8:$rs2), (inst i8:$rs1, i8:$rs2)>;
     def _16 : Pat<(OpNode i16:$rs1, i16:$rs2), (inst i16:$rs1, i16:$rs2)>;
     def _32 : Pat<(OpNode i32:$rs1, i32:$rs2), (inst i32:$rs1, i32:$rs2)>;
+    def _64 : Pat<(OpNode i64:$rs1, i64:$rs2), (inst i64:$rs1, i64:$rs2)>;
+    def _128 : Pat<(OpNode i128:$rs1, i128:$rs2), (inst i128:$rs1, i128:$rs2)>;
 }
 
 multiclass PatIrI32MultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
@@ -386,6 +393,8 @@ multiclass PatIrI32MultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1, i32:$rs2), (inst i8:$rs1, i32:$rs2)>;
     def _16 : Pat<(OpNode i16:$rs1, i32:$rs2), (inst i16:$rs1, i32:$rs2)>;
     def _32 : Pat<(OpNode i32:$rs1, i32:$rs2), (inst i32:$rs1, i32:$rs2)>;
+    def _64 : Pat<(OpNode i64:$rs1, i64:$rs2), (inst i64:$rs1, i64:$rs2)>;
+    def _128 : Pat<(OpNode i128:$rs1, i128:$rs2), (inst i128:$rs1, i128:$rs2)>;
 }
 
 multiclass Pat3IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
@@ -393,6 +402,8 @@ multiclass Pat3IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1, i8:$rs2, i8:$rs3), (inst i8:$rs1, i8:$rs2, i8:$rs3)>;
     def _16 : Pat<(OpNode i16:$rs1, i16:$rs2, i16:$rs3), (inst i16:$rs1, i16:$rs2, i16:$rs3)>;
     def _32 : Pat<(OpNode i32:$rs1, i32:$rs2, i32:$rs3), (inst i32:$rs1, i32:$rs2, i32:$rs3)>;
+    def _64 : Pat<(OpNode i64:$rs1, i64:$rs2, i64:$rs3), (inst i64:$rs1, i64:$rs2, i64:$rs3)>;
+    def _128 : Pat<(OpNode i128:$rs1, i128:$rs2, i128:$rs3), (inst i128:$rs1, i128:$rs2, i128:$rs3)>;
 }
 
 defm : Pat1IrMultiValueType<not, NOTr>;
@@ -427,6 +438,8 @@ multiclass PatComparisonMultiValueType<CondCode condcode, dag pattern> {
     def _8 : Pat<(i1 (setcc i8:$rs1, i8:$rs2, condcode)), pattern>;
     def _16 : Pat<(i1 (setcc i16:$rs1, i16:$rs2, condcode)), pattern>;
     def _32 : Pat<(i1 (setcc i32:$rs1, i32:$rs2, condcode)), pattern>;
+    def _64 : Pat<(i1 (setcc i64:$rs1, i64:$rs2, condcode)), pattern>;
+    def _128 : Pat<(i1 (setcc i128:$rs1, i128:$rs2, condcode)), pattern>;
 }
 
 defm : PatComparisonMultiValueType<SETUGT, (GTrr $rs1, $rs2)>;
@@ -476,6 +489,12 @@ def : Pat<(i16 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
 def : Pat<(i32 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
           (ZEXT_32_1 (TRUNC_1_32 (SHRrr $rs1, $n)))>;
 
+def : Pat<(i64 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
+          (ZEXT_64_1 (TRUNC_1_64 (SHRrr $rs1, $n)))>;
+
+def : Pat<(i128 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
+          (ZEXT_128_1 (TRUNC_1_128 (SHRrr $rs1, $n)))>;
+
 // If we and with 1 we just take the least significant bit.
 def : Pat<(i8 (and i8:$rs1, 1)),
           (ZEXT_8_1 (TRUNC_1_8 $rs1))>;
@@ -485,6 +504,12 @@ def : Pat<(i16 (and i16:$rs1, 1)),
 
 def : Pat<(i32 (and i32:$rs1, 1)),
           (ZEXT_32_1 (TRUNC_1_32 $rs1))>;
+
+def : Pat<(i64 (and i64:$rs1, 1)),
+          (ZEXT_64_1 (TRUNC_1_64 $rs1))>;
+
+def : Pat<(i128 (and i128:$rs1, 1)),
+          (ZEXT_128_1 (TRUNC_1_128 $rs1))>;
 
 // We have a specific pattern when a truncation is performed, which is bit selecting zero.
 
@@ -496,6 +521,12 @@ def : Pat<(i1 (trunc (srl i16:$rs1, Parasolimm32:$n))),
 
 def : Pat<(i1 (trunc (srl i32:$rs1, Parasolimm32:$n))),
             (TRUNC_1_32 (SHRrr $rs1, $n))>;
+
+def : Pat<(i1 (trunc (srl i64:$rs1, Parasolimm32:$n))),
+            (TRUNC_1_64 (SHRrr $rs1, $n))>;
+
+def : Pat<(i1 (trunc (srl i128:$rs1, Parasolimm32:$n))),
+            (TRUNC_1_128 (SHRrr $rs1, $n))>;
 
 // We shift by a immediate value, and with 1, and then check for equality with a
 // boolean is just a bit select.
@@ -600,6 +631,8 @@ defm : BrNePats<i1>;
 defm : BrNePats<i8>;
 defm : BrNePats<i16>;
 defm : BrNePats<i32>;
+defm : BrNePats<i64>;
+defm : BrNePats<i128>;
 
 multiclass BrCondPats<PatFrag Op, Instruction MachOp,  ValueType T> {
     def : Pat<(brcond (i1 (Op T:$lhs, T:$rhs)), bb:$loc),
@@ -611,54 +644,72 @@ defm : BrCondPats<seteq, EQrr, i1>;
 defm : BrCondPats<seteq, EQrr, i8>;
 defm : BrCondPats<seteq, EQrr, i16>;
 defm : BrCondPats<seteq, EQrr, i32>;
+defm : BrCondPats<seteq, EQrr, i64>;
+defm : BrCondPats<seteq, EQrr, i128>;
 
 // brgt (signed)
 defm : BrCondPats<setgt, GTSrr, i1>;
 defm : BrCondPats<setgt, GTSrr, i8>;
 defm : BrCondPats<setgt, GTSrr, i16>;
 defm : BrCondPats<setgt, GTSrr, i32>;
+defm : BrCondPats<setgt, GTSrr, i64>;
+defm : BrCondPats<setgt, GTSrr, i128>;
 
 // brge (signed)
 defm : BrCondPats<setge, GESrr, i1>;
 defm : BrCondPats<setge, GESrr, i8>;
 defm : BrCondPats<setge, GESrr, i16>;
 defm : BrCondPats<setge, GESrr, i32>;
+defm : BrCondPats<setge, GESrr, i64>;
+defm : BrCondPats<setge, GESrr, i128>;
 
 // brlt (signed)
 defm : BrCondPats<setlt, LTSrr, i1>;
 defm : BrCondPats<setlt, LTSrr, i8>;
 defm : BrCondPats<setlt, LTSrr, i16>;
 defm : BrCondPats<setlt, LTSrr, i32>;
+defm : BrCondPats<setlt, LTSrr, i64>;
+defm : BrCondPats<setlt, LTSrr, i128>;
 
 // brle (signed)
 defm : BrCondPats<setle, LESrr, i1>;
 defm : BrCondPats<setle, LESrr, i8>;
 defm : BrCondPats<setle, LESrr, i16>;
 defm : BrCondPats<setle, LESrr, i32>;
+defm : BrCondPats<setle, LESrr, i64>;
+defm : BrCondPats<setle, LESrr, i128>;
 
 // brugt (unsigned)
 defm : BrCondPats<setugt, GTrr, i1>;
 defm : BrCondPats<setugt, GTrr, i8>;
 defm : BrCondPats<setugt, GTrr, i16>;
 defm : BrCondPats<setugt, GTrr, i32>;
+defm : BrCondPats<setugt, GTrr, i64>;
+defm : BrCondPats<setugt, GTrr, i128>;
 
 // bruge (unsigned)
 defm : BrCondPats<setuge, GErr, i1>;
 defm : BrCondPats<setuge, GErr, i8>;
 defm : BrCondPats<setuge, GErr, i16>;
 defm : BrCondPats<setuge, GErr, i32>;
+defm : BrCondPats<setuge, GErr, i64>;
+defm : BrCondPats<setuge, GErr, i128>;
 
 // brult (unsigned)
 defm : BrCondPats<setult, LTrr, i1>;
 defm : BrCondPats<setult, LTrr, i8>;
 defm : BrCondPats<setult, LTrr, i16>;
 defm : BrCondPats<setult, LTrr, i32>;
+defm : BrCondPats<setult, LTrr, i64>;
+defm : BrCondPats<setult, LTrr, i128>;
 
 // brule (unsigned)
 defm : BrCondPats<setule, LErr, i1>;
 defm : BrCondPats<setule, LErr, i8>;
 defm : BrCondPats<setule, LErr, i16>;
 defm : BrCondPats<setule, LErr, i32>;
+defm : BrCondPats<setule, LErr, i64>;
+defm : BrCondPats<setule, LErr, i128>;
 
 //===----------------------------------------------------------------------===//
 // Select patterns
@@ -677,3 +728,12 @@ defm : PatSelect<i1>;
 defm : PatSelect<i8>;
 defm : PatSelect<i16>;
 defm : PatSelect<i32>;
+defm : PatSelect<i64>;
+defm : PatSelect<i128>;
+
+//===----------------------------------------------------------------------===//
+// Stack patterns
+//===----------------------------------------------------------------------===//
+
+//def : Pat<(FrameAddrRegImm (iPTR IR:$rs1), Parasolimm32:$offset),
+//    (ADDrr IR:$rs1, (LoadImmediate32 $offset))>;

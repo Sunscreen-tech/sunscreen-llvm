@@ -77,7 +77,7 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
 
   // Parasol has no select or setcc: expand to SELECT_CC.
-  setOperationAction({ISD::SELECT_CC}, {MVT::i1, MVT::i8, MVT::i16, MVT::i32},
+  setOperationAction({ISD::SELECT_CC}, {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128},
                      Expand);
 
   setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i32,
@@ -88,7 +88,7 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
 
   // Branches
   // setOperationAction(ISD::BRCOND, MVT::i1, Custom);
-  setOperationAction(ISD::BR_CC, {MVT::i1, MVT::i8, MVT::i16, MVT::i32},
+  setOperationAction(ISD::BR_CC, {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128},
                      Expand);
 
   // Set minimum and preferred function alignment (log2)
@@ -241,19 +241,17 @@ static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
   SDValue FIN = DAG.getFrameIndex(FI, MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0)));
   SDValue Val;
 
-  ISD::LoadExtType ExtType;
   switch (VA.getLocInfo()) {
   default:
     llvm_unreachable("Unexpected CCValAssign::LocInfo");
   case CCValAssign::Full:
   case CCValAssign::Indirect:
   case CCValAssign::BCvt:
-    ExtType = ISD::NON_EXTLOAD;
     break;
   }
-  return DAG.getExtLoad(
-      ExtType, DL, LocVT, Chain, FIN,
-      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI), ValVT);
+  return DAG.getLoad(
+      LocVT, DL, Chain, FIN,
+      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
 }
 
 /// LowerFormalArguments - transform physical registers into virtual registers

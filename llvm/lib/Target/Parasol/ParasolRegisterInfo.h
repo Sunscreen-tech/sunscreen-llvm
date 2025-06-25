@@ -22,6 +22,12 @@ namespace llvm {
 class ParasolSubtarget;
 
 class ParasolRegisterInfo : public ParasolGenRegisterInfo {
+  /// Physical register used as stack ptr.
+  unsigned StackPtr;
+
+  /// Physical register used as frame ptr.
+  unsigned FramePtr;
+
 protected:
   const ParasolSubtarget &Subtarget;
 
