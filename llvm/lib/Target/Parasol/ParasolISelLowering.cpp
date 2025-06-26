@@ -398,8 +398,11 @@ ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   for (size_t i = 0; i < Outs.size(); i++) {
     SDValue Val = OutVals[i];
 
-    // SDValue ReturnPtr = DAG.getCopyFromReg(Chain, DL, Parasol::X10,
-    // MVT::i32);
+    int64_t Size = Val.getValueType().getStoreSize();
+
+    // Align our offset to the next allowable address.
+    Offset += (Size - Offset % Size) % Size;
+
     SDValue ReturnPtr = DAG.getRegister(Parasol::X10, MVT::i32);
     SDValue OffsetNode = DAG.getConstant(Offset, DL, MVT::i32);
     SDValue StorePtr =
@@ -407,8 +410,7 @@ ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     Chain = DAG.getStore(Chain, DL, Val, StorePtr,
                          MachinePointerInfo::getUnknownStack(MF));
 
-    Offset += Val.getValueSizeInBits() / 8;
-    // RetOps.push_back(Chain);
+    Offset += Size;
   }
 
   RetOps[0] = Chain;
