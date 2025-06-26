@@ -37,6 +37,7 @@ enum NodeType {
 
   BR_CC,
 
+  STOREBASEOFFSET,
   // Return
   Ret,
 };
@@ -58,7 +59,9 @@ public:
   EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,
                          EVT VT) const override;
 
-  MVT getRegVTForConstraintVT(const TargetRegisterInfo *TRI, const TargetRegisterClass *RC, MVT ConstraintVT) const override;
+  MVT getRegVTForConstraintVT(const TargetRegisterInfo *TRI,
+                              const TargetRegisterClass *RC,
+                              MVT ConstraintVT) const override;
 
 protected:
   // Subtarget Info

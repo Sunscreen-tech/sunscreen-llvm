@@ -71,11 +71,11 @@ bool ParasolRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   unsigned BasePtr = (TFI->hasFP(MF) ? FramePtr : StackPtr);
   int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
 
-  // If we're using the stack pointer to load the item, offset by the current stack
-  // size
+  // If we're using the stack pointer to load the item, offset by the current
+  // stack size
   if (!TFI->hasFP(MF))
     Offset += MF.getFrameInfo().getStackSize();
-  
+
   // Fold imm into offset
   Offset += MI.getOperand(FIOperandNum + 1).getImm();
 
@@ -93,8 +93,8 @@ bool ParasolRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
     // Add the LoadI result to base register
     BuildMI(MBB, std::next(II), dl, TII.get(Parasol::ADDrr), DstReg)
-          .addReg(DstReg)
-          .addReg(BasePtr);
+        .addReg(DstReg)
+        .addReg(BasePtr);
 
     return false;
   }

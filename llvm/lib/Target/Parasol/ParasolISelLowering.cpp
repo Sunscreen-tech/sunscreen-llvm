@@ -77,19 +77,35 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
 
   // Parasol has no select or setcc: expand to SELECT_CC.
-  setOperationAction({ISD::SELECT_CC}, {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128},
-                     Expand);
+  setOperationAction(
+      {ISD::SELECT_CC},
+      {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}, Expand);
 
+  setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i16,
+                   MVT::i8, Expand);
   setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i32,
                    {MVT::i8, MVT::i16}, Expand);
+  setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i64,
+                   {MVT::i8, MVT::i16, MVT::i32}, Expand);
+  setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i128,
+                   {MVT::i8, MVT::i16, MVT::i32, MVT::i64}, Expand);
 
+  setTruncStoreAction(MVT::i16, MVT::i8, Expand);
   setTruncStoreAction(MVT::i32, MVT::i8, Expand);
   setTruncStoreAction(MVT::i32, MVT::i16, Expand);
+  setTruncStoreAction(MVT::i64, MVT::i8, Expand);
+  setTruncStoreAction(MVT::i64, MVT::i16, Expand);
+  setTruncStoreAction(MVT::i64, MVT::i32, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i8, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i16, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i32, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i64, Expand);
 
   // Branches
   // setOperationAction(ISD::BRCOND, MVT::i1, Custom);
-  setOperationAction(ISD::BR_CC, {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128},
-                     Expand);
+  setOperationAction(
+      ISD::BR_CC, {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128},
+      Expand);
 
   // Set minimum and preferred function alignment (log2)
   setMinFunctionAlignment(Align(8));
@@ -159,17 +175,6 @@ void ParasolTargetLowering::analyzeInputArgs(
   }
 }
 
-void ParasolTargetLowering::analyzeOutputArgs(
-    MachineFunction &MF, CCState &CCInfo,
-    const SmallVectorImpl<ISD::OutputArg> &Outs) const {
-
-  for (unsigned i = 0; i < Outs.size(); i++) {
-    MVT ArgVT = Outs[i].VT;
-
-
-  }
-}
-
 // Convert Val to a ValVT. Should not be called for CCValAssign::Indirect
 // values.
 static SDValue convertLocVTToValVT(SelectionDAG &DAG, SDValue Val,
@@ -235,10 +240,11 @@ static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
   MachineFrameInfo &MFI = MF.getFrameInfo();
   EVT LocVT = VA.getLocVT();
   EVT ValVT = VA.getValVT();
-  
+
   int FI = MFI.CreateFixedObject(ValVT.getStoreSize(), VA.getLocMemOffset(),
                                  /*IsImmutable=*/true);
-  SDValue FIN = DAG.getFrameIndex(FI, MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0)));
+  SDValue FIN = DAG.getFrameIndex(
+      FI, MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0)));
   SDValue Val;
 
   switch (VA.getLocInfo()) {
@@ -286,7 +292,7 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
     SDValue ArgValue;
 
     ArgValue = unpackFromMemLoc(DAG, Chain, VA, DL);
-    
+
     InVals.push_back(ArgValue);
   }
 
@@ -298,21 +304,9 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
 //===----------------------------------------------------------------------===//
 
 bool ParasolTargetLowering::CanLowerReturn(
-    CallingConv::ID CallConv, MachineFunction &MF, bool isVarArg,
+    CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
-  SmallVector<CCValAssign, 16> RVLocs;
-  switch (Outs.size()) {
-  case 0:
-    return true;
-  case 1:
-    return Outs[0].VT.getStoreSize() <= 8;
-  case 2:
-    return Outs[0].VT.getStoreSize() + Outs[1].VT.getStoreSize() <= 8;
-  default:
-    return false;
-  }
-
-  return false;
+  return true;
 }
 
 /// LowerMemOpCallTo - Store the argument to the stack.
@@ -388,8 +382,7 @@ ParasolTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 /// this.
 
 void ParasolTargetLowering::HandleByVal(CCState *State, unsigned &Size,
-                                        Align align) const {
-}
+                                        Align align) const {}
 
 SDValue
 ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
@@ -397,38 +390,28 @@ ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                    const SmallVectorImpl<ISD::OutputArg> &Outs,
                                    const SmallVectorImpl<SDValue> &OutVals,
                                    const SDLoc &DL, SelectionDAG &DAG) const {
-  SmallVector<CCValAssign, 16> RVLocs;
   SmallVector<SDValue, 4> RetOps(1, Chain);
   MachineFunction &MF = DAG.getMachineFunction();
-  CCState CCInfo(CallConv, isVarArg, MF, RVLocs, *DAG.getContext());
-  SDValue Glue;
 
-  // The caller has split up > 4-byte values on our behalf.
-  if (OutVals.size() > 2) {
-    assert("Cannot return more than 2 values in registers.");
-  }
+  int64_t Offset = 0;
 
-  analyzeOutputArgs(MF, CCInfo, Outs);
-
-  for (size_t i = 0; i < RVLocs.size(); i++) {
+  for (size_t i = 0; i < Outs.size(); i++) {
     SDValue Val = OutVals[i];
-    CCValAssign &VA = RVLocs[i];
 
-    // Explicitly zero-extend values too small for 4-bytes.
-    if (VA.getValVT().getStoreSize() < 4) {
-      Val = DAG.getZeroExtendInReg(Val, DL, MVT::i32);
-    }
+    // SDValue ReturnPtr = DAG.getCopyFromReg(Chain, DL, Parasol::X10,
+    // MVT::i32);
+    SDValue ReturnPtr = DAG.getRegister(Parasol::X10, MVT::i32);
+    SDValue OffsetNode = DAG.getConstant(Offset, DL, MVT::i32);
+    SDValue StorePtr =
+        DAG.getNode(ISD::ADD, DL, MVT::i32, ReturnPtr, OffsetNode);
+    Chain = DAG.getStore(Chain, DL, Val, StorePtr,
+                         MachinePointerInfo::getUnknownStack(MF));
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Glue);
-    Glue = Chain.getValue(1);
-    RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
+    Offset += Val.getValueSizeInBits() / 8;
+    // RetOps.push_back(Chain);
   }
 
   RetOps[0] = Chain;
-
-  if (Glue.getNode()) {
-    RetOps.push_back(Glue);
-  }
 
   return DAG.getNode(ParasolISD::RetGlue, DL, MVT::Other, RetOps);
 }
@@ -484,7 +467,7 @@ SDValue ParasolTargetLowering::LowerOperation(SDValue Op,
   case ISD::ConstantPool:
     return LowerConstantPool(Op, DAG);
   case ISD::RETURNADDR:
-    return LowerRETURNADDR(Op, DAG);   
+    return LowerRETURNADDR(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -505,7 +488,9 @@ ParasolTargetLowering::getRegForInlineAsmConstraint(
   }
 }
 
-MVT ParasolTargetLowering::getRegVTForConstraintVT(const TargetRegisterInfo *TRI, const TargetRegisterClass *RC, MVT ConstraintVT) const {
+MVT ParasolTargetLowering::getRegVTForConstraintVT(
+    const TargetRegisterInfo *TRI, const TargetRegisterClass *RC,
+    MVT ConstraintVT) const {
   if (!ConstraintVT.isInteger()) {
     return TargetLowering::getRegVTForConstraintVT(TRI, RC, ConstraintVT);
   }
