@@ -78,13 +78,29 @@ def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size, Paraso
     let Opcode = OPC_LOAD.Value;
 }
 
-// def : Pat<(i1 (load (AddrRegImm (i32 IR:$addr), Parasolimm32:$offset))), (LOAD $addr, 1, $offset)>;
+def : Pat<(i1 (load IR:$addr)), (LOAD $addr, 8, 0)>;
+def : Pat<(i1 (load (add IR:$base, Parasolimm32:$offset))), (LOAD $base, 8, $offset)>;
+
+foreach ty = [i8, i16, i32, i64, i128] in {
+    def : Pat<(ty (load (add IR:$base, Parasolimm32:$offset))), (LOAD $base, ty.Size, $offset)>;
+    def : Pat<(ty (load IR:$addr)), (LOAD $addr, ty.Size, 0)>;    
+}
+
+/*
 def : Pat<(i1 (load IR:$addr)), (LOAD $addr, 8, 0)>;
 def : Pat<(i8 (load IR:$addr)), (LOAD $addr, 8, 0)>;
 def : Pat<(i16 (load IR:$addr)), (LOAD $addr, 16, 0)>;
 def : Pat<(i32 (load IR:$addr)), (LOAD $addr, 32, 0)>;
 def : Pat<(i64 (load IR:$addr)), (LOAD $addr, 64, 0)>;
 def : Pat<(i128 (load IR:$addr)), (LOAD $addr, 128, 0)>;
+*/
+
+//def : Pat<(i1 (load (add IR:$base, Parasolimm32:$offset))), (LOAD $base, 8, $offset)>;
+//def : Pat<(i8 (load IR:$addr)), (LOAD $addr, 8, 0)>;
+//def : Pat<(i16 (load IR:$addr)), (LOAD $addr, 16, 0)>;
+//def : Pat<(i32 (load IR:$addr)), (LOAD $addr, 32, 0)>;
+//def : Pat<(i64 (load IR:$addr)), (LOAD $addr, 64, 0)>;
+//def : Pat<(i128 (load IR:$addr)), (LOAD $addr, 128, 0)>;
 
 
 def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "str", "$addr, $offset, $val, $size", []> {
@@ -104,12 +120,20 @@ def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size, Para
     let Opcode = OPC_STORE.Value;
 }
 
-def : Pat<(store i1:$val , IR:$addr), (STORE $val, $addr, 1, 0)>;
-def : Pat<(store i8:$val , IR:$addr), (STORE $val, $addr, 8, 0)>;
-def : Pat<(store i16:$val, IR:$addr), (STORE $val, $addr, 16, 0)>;
-def : Pat<(store i32:$val, IR:$addr), (STORE $val, $addr, 32, 0)>;
-def : Pat<(store i64:$val, IR:$addr), (STORE $val, $addr, 64, 0)>;
-def : Pat<(store i128:$val, IR:$addr), (STORE $val, $addr, 128, 0)>;
+def : Pat<(store i1:$val, IR:$addr), (STORE $val, $addr, 8, 0)>;
+def : Pat<(store i1:$val, (add IR:$base, Parasolimm32:$offset)), (STORE $val, $base, 8, $offset)>;
+
+foreach ty = [i8, i16, i32, i64, i128] in {
+    def : Pat<(store ty:$val, IR:$addr), (STORE $val, $addr, ty.Size, 0)>;
+    def : Pat<(store ty:$val, (add IR:$base, Parasolimm32:$offset)), (STORE $val, $base, ty.Size, $offset)>;
+}
+
+//def : Pat<(store i1:$val , IR:$addr), (STORE $val, $addr, 1, 0)>;
+//def : Pat<(store i8:$val , IR:$addr), (STORE $val, $addr, 8, 0)>;
+//def : Pat<(store i16:$val, IR:$addr), (STORE $val, $addr, 16, 0)>;
+//def : Pat<(store i32:$val, IR:$addr), (STORE $val, $addr, 32, 0)>;
+//def : Pat<(store i64:$val, IR:$addr), (STORE $val, $addr, 64, 0)>;
+//def : Pat<(store i128:$val, IR:$addr), (STORE $val, $addr, 128, 0)>;
 
 def MOV : ParasolInst<(outs IR:$dst), (ins IR:$src), "mv", "$dst, $src", []> {
     bits<6> dst;
