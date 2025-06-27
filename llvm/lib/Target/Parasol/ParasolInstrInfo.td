@@ -61,7 +61,7 @@ def LoadImmediate32 : ParasolLoadImm<Parasolimm32, i32>;
 // Load/Store Instructions
 //===----------------------------------------------------------------------===//
 
-def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "ldr", "$val, $offset[$addr], $size", []> {
+def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "ldr", "$val, ${offset}(${addr}), $size", []> {
     bits<7> size;
     bits<6> val;
     bits<6> addr;
@@ -86,7 +86,7 @@ foreach ty = [i8, i16, i32, i64, i128] in {
     def : Pat<(ty (load (add IR:$base, Parasolimm32:$offset))), (LOAD $base, ty.Size, $offset)>;
 }
 
-def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "str", "$offset[$addr], $val, $size", []> {
+def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "str", "${offset}(${addr}), $val, $size", []> {
     bits<7> size;
     bits<6> val;
     bits<6> addr;
