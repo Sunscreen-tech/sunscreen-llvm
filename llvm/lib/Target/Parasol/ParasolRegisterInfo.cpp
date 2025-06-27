@@ -52,6 +52,7 @@ ParasolRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   markSuperRegs(Reserved, Parasol::X3); // gp
   markSuperRegs(Reserved, Parasol::X4); // tp
   markSuperRegs(Reserved, Parasol::X8); // FP
+  markSuperRegs(Reserved, Parasol::X10); // RP
 
   return Reserved;
 }
@@ -89,6 +90,11 @@ bool ParasolRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MI.setDesc(TII.get(Parasol::LoadImmediate32));
     MI.getOperand(FIOperandNum).ChangeToImmediate(Offset);
     MI.removeOperand(FIOperandNum + 1);
+
+    if (Offset == 0) {
+      return false;
+    }
+
     Register DstReg = MI.getOperand(0).getReg();
 
     // Add the LoadI result to base register
