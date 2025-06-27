@@ -48,10 +48,10 @@ BitVector
 ParasolRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
-  markSuperRegs(Reserved, Parasol::X2); // SP
-  markSuperRegs(Reserved, Parasol::X3); // gp
-  markSuperRegs(Reserved, Parasol::X4); // tp
-  markSuperRegs(Reserved, Parasol::X8); // FP
+  markSuperRegs(Reserved, Parasol::X2);  // SP
+  markSuperRegs(Reserved, Parasol::X3);  // gp
+  markSuperRegs(Reserved, Parasol::X4);  // tp
+  markSuperRegs(Reserved, Parasol::X8);  // FP
   markSuperRegs(Reserved, Parasol::X10); // RP
 
   return Reserved;
@@ -77,10 +77,7 @@ bool ParasolRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   if (!TFI->hasFP(MF))
     Offset += MF.getFrameInfo().getStackSize();
 
-  // Fold imm into offset
-  Offset += MI.getOperand(FIOperandNum + 1).getImm();
-
-  if (MI.getOpcode() == Parasol::ADDframe) {
+  if (MI.getOpcode() == Parasol::ADDRri) {
     // This is actually "load effective address" of the stack slot
     // instruction. We have only two-address instructions, thus we need to
     // expand it into mov + add
@@ -91,10 +88,6 @@ bool ParasolRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MI.getOperand(FIOperandNum).ChangeToImmediate(Offset);
     MI.removeOperand(FIOperandNum + 1);
 
-    if (Offset == 0) {
-      return false;
-    }
-
     Register DstReg = MI.getOperand(0).getReg();
 
     // Add the LoadI result to base register
@@ -102,12 +95,10 @@ bool ParasolRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         .addReg(DstReg)
         .addReg(BasePtr);
 
-    return false;
+    return true;
   }
 
-  MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
-  MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
-  return false;
+  llvm_unreachable("Unexpected frame index.");
 }
 
 bool ParasolRegisterInfo::requiresRegisterScavenging(

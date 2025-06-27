@@ -10,8 +10,8 @@
 //===----------------------------------------------------------------------===//
 
 // Frame index calculations.
-//def FrameAddrRegImm : ComplexPattern<iPTR, 2, "SelectFrameAddrRegImm",
-//                                     [frameindex]>;
+def FrameAddrRegImm : ComplexPattern<iPTR, 2, "SelectFrameAddrRegImm",
+                                     [frameindex]>;
 
 //def AddrRegImm : ComplexPattern<i32, 2, "SelectAddrRegImm">;
 
@@ -42,7 +42,7 @@ def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                               [(callseq_start timm:$amt1, timm:$amt2)]>;
 def ADJCALLSTACKUP   : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                               [(callseq_end timm:$amt1, timm:$amt2)]>;
-def ADDframe : Pseudo<(outs IR:$dst), (ins Parasolimm32:$base, Parasolimm32:$offset),
+def ADDRri : Pseudo<(outs IR:$dst), (ins Parasolimm32:$base, Parasolimm32:$offset),
                       []>;
 } // end Defs = [X2], Uses = [X2]
 
@@ -735,5 +735,5 @@ defm : PatSelect<i128>;
 // Stack patterns
 //===----------------------------------------------------------------------===//
 
-//def : Pat<(FrameAddrRegImm (iPTR IR:$rs1), Parasolimm32:$offset),
-//    (ADDrr IR:$rs1, (LoadImmediate32 $offset))>;
+def : Pat<(FrameAddrRegImm (iPTR IR:$rs1), Parasolimm32:$offset),
+    (ADDRri IR:$rs1, Parasolimm32:$offset)>;

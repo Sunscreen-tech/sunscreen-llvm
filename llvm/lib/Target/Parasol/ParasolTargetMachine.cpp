@@ -34,6 +34,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeParasolTarget() {
   PassRegistry &PR = *PassRegistry::getPassRegistry();
   initializeGlobalISel(PR);
 
+  initializeParasolMergeBaseOffsetOptPass(PR);
+
   // Maybe implement?
   // initializeParasolCheckAndAdjustIRPass(PR);
   // initializeParasolMIPeepholePass(PR);
@@ -122,6 +124,7 @@ public:
   bool addInstSelector() override;
   void addPreEmitPass() override;
   void addIRPasses() override;
+  void addPreRegAlloc() override;
 
   bool addIRTranslator() override;
   bool addLegalizeMachineIR() override;
@@ -149,6 +152,10 @@ void ParasolPassConfig::addPreEmitPass() {}
 void ParasolPassConfig::addIRPasses() {
   // TargetPassConfig::addIRPasses();
   // addPass(createAnnotateEncryptionPass());
+}
+
+void ParasolPassConfig::addPreRegAlloc() {
+  addPass(createParasolMergeBaseOffsetPass());
 }
 
 bool ParasolPassConfig::addIRTranslator() {

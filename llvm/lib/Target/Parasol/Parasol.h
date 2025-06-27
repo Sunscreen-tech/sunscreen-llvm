@@ -29,6 +29,9 @@ class PassRegistry;
 // Declare functions to create passes here!
 FunctionPass *createAnnotateEncryptionPass();
 void initializeAnnotateEncryptionLegacyPass(PassRegistry &);
+void initializeParasolMergeBaseOffsetOptPass(PassRegistry &);
+
+FunctionPass *createParasolMergeBaseOffsetPass();
 
 InstructionSelector *
 createParasolInstructionSelector(const ParasolTargetMachine &,

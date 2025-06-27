@@ -34,6 +34,7 @@ add_llvm_target(ParasolCodeGen
   ParasolFrameLowering.cpp
   ParasolInstrInfo.cpp
   ParasolISelLowering.cpp
+  ParasolMergeBaseOffset.cpp
   ParasolRegisterInfo.cpp
   ParasolSubtarget.cpp
   ParasolTargetObjectFile.cpp

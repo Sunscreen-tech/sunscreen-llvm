@@ -56,7 +56,7 @@ function configure_llvm() {
   check_requirements
   cmake -G "Ninja" \
       -DLLVM_ENABLE_PROJECTS="clang;lld" \
-      -DLLVM_TARGETS_TO_BUILD="" \
+      -DLLVM_TARGETS_TO_BUILD="AArch64" \
       -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="Parasol" \
       -DCMAKE_BUILD_TYPE="${build_type}" \
       -DLLVM_ENABLE_ASSERTIONS=On \
