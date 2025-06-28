@@ -32,3 +32,34 @@ bool ParasolToolChain::isPICDefaultForced() const { return true; }
 bool ParasolToolChain::SupportsProfiling() const { return false; }
 
 bool ParasolToolChain::hasBlocksRuntime() const { return false; }
+
+Tool *ParasolToolChain::buildLinker() const { return new ParasolLinker(*this); }
+
+bool ParasolLinker::hasIntegratedCPP() const { return false; }
+
+bool ParasolLinker::isLinkJob() const { return true; }
+
+void ParasolLinker::ConstructJob(Compilation &C, const JobAction &JA,
+                                 const InputInfo &Output, const InputInfoList &Inputs,
+                                 const ArgList &Args,
+                                 const char *LinkingOutput) const {
+  ArgStringList CmdArgs;
+
+  assert(Output.isFilename() && "Output must be a file");
+  CmdArgs.push_back("-o");
+  CmdArgs.push_back(Output.getFilename());
+
+  Args.AddAllArgValues(CmdArgs, options::OPT_Wa_COMMA, options::OPT_Xassembler);
+
+  for (const auto &Input : Inputs) {
+    assert(Input.getType() == types::TY_Object && Input.isFilename() && "Input must be an object file");
+    CmdArgs.push_back(Input.getFilename());
+  }
+
+  std::string Path(getToolChain().getDriver().getInstalledDir());
+  const char *Exec = Args.MakeArgString(Path + "/ld.lld");
+
+  C.addCommand(std::make_unique<Command>(JA, *this,
+                                         ResponseFileSupport::AtFileCurCP(),
+                                         Exec, CmdArgs, Inputs, Output));
+}

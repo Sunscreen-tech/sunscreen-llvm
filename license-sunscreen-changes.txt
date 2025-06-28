@@ -29,6 +29,7 @@ clang/lib/Basic/Targets/Parasol.h
 clang/lib/CodeGen/CGCall.cpp
 clang/lib/CodeGen/CodeGenModule.cpp
 clang/lib/Driver/CMakeLists.txt
+clang/lib/Driver/Driver.cpp
 clang/lib/Driver/ToolChains/Parasol.cpp
 clang/lib/Driver/ToolChains/Parasol.h
 clang/lib/Sema/SemaDeclAttr.cpp

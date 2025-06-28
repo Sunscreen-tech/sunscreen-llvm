@@ -9,6 +9,7 @@
 #define LLVM_CLANG_LIB_DRIVER_TOOLCHAINS_Parasol_H
 
 #include "Gnu.h"
+#include "clang/Driver/Tool.h"
 #include "clang/Driver/ToolChain.h"
 
 namespace clang {
@@ -37,6 +38,23 @@ public:
                                llvm::opt::ArgStringList &CC1Args) const override {}
   void AddCXXStdlibLibArgs(const llvm::opt::ArgList &Args,
                            llvm::opt::ArgStringList &CmdArgs) const override {}
+
+  Tool *buildLinker() const override;
+};
+
+class LLVM_LIBRARY_VISIBILITY ParasolLinker : public Tool {
+public:
+  ParasolLinker(const ToolChain &TC) : Tool("ParasolLinker", "linker", TC) {}
+
+  bool hasIntegratedCPP() const override;
+  bool isLinkJob() const override;
+  void
+  ConstructJob(Compilation &C,
+               const JobAction &JA,
+               const InputInfo &Output,
+               const InputInfoList &Inputs,
+               const llvm::opt::ArgList &TCArgs,
+               const char *LinkingOutput) const override;
 };
 
 } // end namespace toolchains
