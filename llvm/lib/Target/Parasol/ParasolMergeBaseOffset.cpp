@@ -25,7 +25,8 @@ namespace {
 class ParasolMergeBaseOffsetOpt : public MachineFunctionPass {
   MachineRegisterInfo *MRI;
 
-  bool getImmediateOffset(const MachineOperand& Operand, int32_t& Offset, Register& Base);
+  bool getImmediateOffset(const MachineOperand &Operand, int32_t &Offset,
+                          Register &Base);
 
 public:
   static char ID;
@@ -54,32 +55,33 @@ char ParasolMergeBaseOffsetOpt::ID = 0;
 INITIALIZE_PASS(ParasolMergeBaseOffsetOpt, DEBUG_TYPE,
                 PARASOL_MERGE_BASE_OFFSET_NAME, false, false)
 
-bool ParasolMergeBaseOffsetOpt::getImmediateOffset(const MachineOperand& Operand, int32_t& Offset, Register& Base) {
-    MachineInstr* SrcInst = &*MRI->use_instr_begin(Operand.getReg());
+bool ParasolMergeBaseOffsetOpt::getImmediateOffset(
+    const MachineOperand &Operand, int32_t &Offset, Register &Base) {
+  MachineInstr *SrcInst = &*MRI->use_instr_begin(Operand.getReg());
 
-    if (SrcInst->getOpcode() != Parasol::ADDrr) {
-        return false;
-    }
-
-    Register LeftReg = SrcInst->getOperand(0).getReg();
-    Register RightReg = SrcInst->getOperand(1).getReg();
-
-    MachineInstr* LeftOp = &*MRI->use_instr_begin(LeftReg);
-    MachineInstr* RightOp = &*MRI->use_instr_begin(RightReg);
-
-    if (LeftOp->getOpcode() == Parasol::LoadImmediate32) {
-        Offset = LeftOp->getOperand(0).getImm();
-        Base = RightReg;
-        return true;
-    }
-
-    if (RightOp->getOpcode() == Parasol::LoadImmediate32) {
-        Offset = RightOp->getOperand(0).getImm();
-        Base = LeftReg;
-        return true;
-    }
-
+  if (SrcInst->getOpcode() != Parasol::ADDrr) {
     return false;
+  }
+
+  Register LeftReg = SrcInst->getOperand(0).getReg();
+  Register RightReg = SrcInst->getOperand(1).getReg();
+
+  MachineInstr *LeftOp = &*MRI->use_instr_begin(LeftReg);
+  MachineInstr *RightOp = &*MRI->use_instr_begin(RightReg);
+
+  if (LeftOp->getOpcode() == Parasol::LoadImmediate32) {
+    Offset = LeftOp->getOperand(0).getImm();
+    Base = RightReg;
+    return true;
+  }
+
+  if (RightOp->getOpcode() == Parasol::LoadImmediate32) {
+    Offset = RightOp->getOperand(0).getImm();
+    Base = LeftReg;
+    return true;
+  }
+
+  return false;
 }
 
 bool ParasolMergeBaseOffsetOpt::runOnMachineFunction(MachineFunction &Fn) {
@@ -96,25 +98,25 @@ bool ParasolMergeBaseOffsetOpt::runOnMachineFunction(MachineFunction &Fn) {
       Register Base;
 
       switch (MInst.getOpcode()) {
-        default:
-            continue;
-        case Parasol::LOAD: {
-            if (getImmediateOffset(MInst.getOperand(0), Offset, Base)) {
-                MadeChange = true;
-                MInst.getOperand(2).setReg(Base);
-                MInst.getOperand(3).setImm(Offset);
-            }
-            break;
+      default:
+        continue;
+      case Parasol::LOAD: {
+        if (getImmediateOffset(MInst.getOperand(0), Offset, Base)) {
+          MadeChange = true;
+          MInst.getOperand(2).setReg(Base);
+          MInst.getOperand(3).setImm(Offset);
         }
-        case Parasol::STORE: {
-            if (getImmediateOffset(MInst.getOperand(1), Offset, Base)) {
-                MadeChange = true;
-                MInst.getOperand(2).setReg(Base);
-                MInst.getOperand(4).setImm(Offset);
-            }
+        break;
+      }
+      case Parasol::STORE: {
+        if (getImmediateOffset(MInst.getOperand(1), Offset, Base)) {
+          MadeChange = true;
+          MInst.getOperand(2).setReg(Base);
+          MInst.getOperand(4).setImm(Offset);
+        }
 
-            break;
-        }
+        break;
+      }
       }
     }
   }
@@ -123,5 +125,5 @@ bool ParasolMergeBaseOffsetOpt::runOnMachineFunction(MachineFunction &Fn) {
 }
 
 FunctionPass *llvm::createParasolMergeBaseOffsetPass() {
-    return new ParasolMergeBaseOffsetOpt();
+  return new ParasolMergeBaseOffsetOpt();
 }

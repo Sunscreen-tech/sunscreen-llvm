@@ -63,6 +63,9 @@ public:
                               const TargetRegisterClass *RC,
                               MVT ConstraintVT) const override;
 
+  EVT getTypeForExtReturn(LLVMContext &Context, EVT VT,
+                          ISD::NodeType /*ExtendKind*/) const override;
+
 protected:
   // Subtarget Info
   const ParasolSubtarget &Subtarget;

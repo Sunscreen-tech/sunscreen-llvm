@@ -40,18 +40,18 @@ void ParasolDAGToDAGISel::Select(SDNode *Node) {
   switch (Node->getOpcode()) {
   default:
     break;
-  // case ISD::FrameIndex: {
-  //   int FI = cast<FrameIndexSDNode>(Node)->getIndex();
-  //   SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
-  //   /*if (Node->hasOneUse()) {
-  //     CurDAG->SelectNodeTo(Node, Parasol::ADDframe, MVT::i32, TFI,
-  //                          CurDAG->getTargetConstant(0, dl, MVT::i32));
-  //   }*/
-  //   ReplaceNode(Node, CurDAG->getMachineNode(
-  //                         Parasol::ADDframe, dl, MVT::i32, TFI,
-  //                         CurDAG->getTargetConstant(0, dl, MVT::i32)));
-  //   return;
-  // }
+    // case ISD::FrameIndex: {
+    //   int FI = cast<FrameIndexSDNode>(Node)->getIndex();
+    //   SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
+    //   /*if (Node->hasOneUse()) {
+    //     CurDAG->SelectNodeTo(Node, Parasol::ADDframe, MVT::i32, TFI,
+    //                          CurDAG->getTargetConstant(0, dl, MVT::i32));
+    //   }*/
+    //   ReplaceNode(Node, CurDAG->getMachineNode(
+    //                         Parasol::ADDframe, dl, MVT::i32, TFI,
+    //                         CurDAG->getTargetConstant(0, dl, MVT::i32)));
+    //   return;
+    // }
   }
 
   // Select the default instruction

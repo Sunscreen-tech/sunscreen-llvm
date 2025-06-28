@@ -144,6 +144,14 @@ bool assignArg(const DataLayout &DL, unsigned ValNo, MVT ValVT, MVT LocVT,
   unsigned ValSize = ValVT.getStoreSize();
   Align ValAlign = Align(ValSize);
 
+  // Large value return pointer lives in X10, not the stack.
+  if (ArgFlags.isSRet()) {
+    assert(ValVT == MVT::i32 && "Large value return pointer should be i32.");
+    State.addLoc(
+        CCValAssign::getReg(ValNo, ValVT, Parasol::X10, MVT::i32, LocInfo));
+    return false;
+  }
+
   int64_t StackOffset = State.AllocateStack(ValSize, ValAlign);
   State.addLoc(CCValAssign::getMem(ValNo, ValVT, StackOffset, LocVT, LocInfo));
 
@@ -288,6 +296,14 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
   analyzeInputArgs(MF, CCInfo, Ins, false);
 
   for (unsigned i = 0, e = ArgLocs.size(), InsIdx = 0; i != e; ++i, ++InsIdx) {
+    auto In = Ins[i];
+
+    // If the frontend emitted a return pointer, it's in X10.
+    if (Ins[i].Flags.isSRet()) {
+      InVals.push_back(DAG.getCopyFromReg(Chain, DL, Parasol::X10, MVT::i32));
+      continue;
+    }
+
     CCValAssign &VA = ArgLocs[i];
     SDValue ArgValue;
 
@@ -396,6 +412,7 @@ ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   int64_t Offset = 0;
 
   for (size_t i = 0; i < Outs.size(); i++) {
+    ISD::OutputArg Out = Outs[i];
     SDValue Val = OutVals[i];
 
     int64_t Size = Val.getValueType().getStoreSize();
@@ -498,4 +515,11 @@ MVT ParasolTargetLowering::getRegVTForConstraintVT(
   }
 
   return ConstraintVT;
+}
+
+EVT ParasolTargetLowering::getTypeForExtReturn(
+    LLVMContext &Context, EVT VT, ISD::NodeType /*ExtendKind*/) const {
+  // We don't ever sign extend the return type since they're always on the
+  // stack.
+  return VT;
 }
