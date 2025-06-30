@@ -37,8 +37,6 @@ public:
 
   bool SelectFrameAddrRegImm(SDValue Addr, SDValue &Base, SDValue &Offset);
 
-  bool SelectAddrRegImm(SDValue Addr, SDValue &Base, SDValue &Offset);
-
 #include "ParasolGenDAGISel.inc"
 
 private:

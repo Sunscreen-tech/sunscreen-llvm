@@ -35,25 +35,6 @@ void ParasolDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
 
-  // Instruction Selection not handled by the auto-generated tablegen selection
-  // should be handled here.
-  switch (Node->getOpcode()) {
-  default:
-    break;
-    // case ISD::FrameIndex: {
-    //   int FI = cast<FrameIndexSDNode>(Node)->getIndex();
-    //   SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
-    //   /*if (Node->hasOneUse()) {
-    //     CurDAG->SelectNodeTo(Node, Parasol::ADDframe, MVT::i32, TFI,
-    //                          CurDAG->getTargetConstant(0, dl, MVT::i32));
-    //   }*/
-    //   ReplaceNode(Node, CurDAG->getMachineNode(
-    //                         Parasol::ADDframe, dl, MVT::i32, TFI,
-    //                         CurDAG->getTargetConstant(0, dl, MVT::i32)));
-    //   return;
-    // }
-  }
-
   // Select the default instruction
   SelectCode(Node);
 }
@@ -72,11 +53,13 @@ bool ParasolDAGToDAGISel::SelectAddrFrameIndex(SDValue Addr, SDValue &Base,
 // Select a frame index.
 bool ParasolDAGToDAGISel::SelectFrameAddrRegImm(SDValue Addr, SDValue &Base,
                                                 SDValue &Offset) {
-  if (SelectAddrFrameIndex(Addr, Base, Offset))
+  if (SelectAddrFrameIndex(Addr, Base, Offset)) {
     return true;
+  }
 
-  if (!CurDAG->isBaseWithConstantOffset(Addr))
+  if (!CurDAG->isBaseWithConstantOffset(Addr)) {
     return false;
+  }
 
   if (auto *FIN = dyn_cast<FrameIndexSDNode>(Addr.getOperand(0))) {
     int64_t CVal = cast<ConstantSDNode>(Addr.getOperand(1))->getSExtValue();
@@ -88,29 +71,4 @@ bool ParasolDAGToDAGISel::SelectFrameAddrRegImm(SDValue Addr, SDValue &Base,
   }
 
   return false;
-}
-
-bool ParasolDAGToDAGISel::SelectAddrRegImm(SDValue Addr, SDValue &Base,
-                                           SDValue &Offset) {
-  if (SelectAddrFrameIndex(Addr, Base, Offset))
-    return true;
-
-  SDLoc DL(Addr);
-  MVT VT = Addr.getSimpleValueType();
-
-  if (CurDAG->isBaseWithConstantOffset(Addr)) {
-    int64_t CVal = cast<ConstantSDNode>(Addr.getOperand(1))->getSExtValue();
-    if (isInt<32>(CVal)) {
-      Base = Addr.getOperand(0);
-
-      if (auto *FIN = dyn_cast<FrameIndexSDNode>(Base))
-        Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), VT);
-      Offset = CurDAG->getTargetConstant(CVal, DL, VT);
-      return true;
-    }
-  }
-
-  Base = Addr;
-  Offset = CurDAG->getTargetConstant(0, DL, VT);
-  return true;
 }

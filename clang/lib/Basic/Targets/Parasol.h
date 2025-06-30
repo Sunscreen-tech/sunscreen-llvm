@@ -35,8 +35,9 @@ public:
                     "-p:32:32"
                     // 64-bit integers, 64-bit aligned
                     "-i64:64"
+                    "-i128:128"
                     // 32-bit native integer width i.e register are 32-bit
-                    "-n1:8:16:32"
+                    "-n1:8:16:32:64:128"
                     // 128-bit natural stack alignment
                     "-S128"
     );
@@ -65,6 +66,10 @@ public:
 
   std::string_view getClobbers() const override {
     return "";
+  }
+
+  bool hasInt128Type() const override {
+    return true;
   }
 
   bool validateAsmConstraint(const char *&Name,

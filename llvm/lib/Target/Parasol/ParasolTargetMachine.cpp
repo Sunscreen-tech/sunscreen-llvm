@@ -34,8 +34,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeParasolTarget() {
   PassRegistry &PR = *PassRegistry::getPassRegistry();
   initializeGlobalISel(PR);
 
-  initializeParasolMergeBaseOffsetOptPass(PR);
-
   // Maybe implement?
   // initializeParasolCheckAndAdjustIRPass(PR);
   // initializeParasolMIPeepholePass(PR);
@@ -57,11 +55,14 @@ static std::string computeDataLayout() {
   // 32-bit pointers, 32-bit aligned
   Ret += "-p:32:32";
 
-  // 64-bit integers, 64 bit aligned
+  // 64-bit integers, 64-bit aligned
   Ret += "-i64:64";
 
-  // 1, 8, 16, and 32-bit native integer width i.e register are 32-bit
-  Ret += "-n1:8:16:32";
+  // 128-bit integers, 128-bit aligned
+  Ret += "-i128:128";
+
+  // 1, 8, 16, 32, 64, and 128-bit native integer width i.e register are 128-bit
+  Ret += "-n1:8:16:32:64:128";
 
   // 128-bit natural stack alignment
   Ret += "-S128";
@@ -124,7 +125,6 @@ public:
   bool addInstSelector() override;
   void addPreEmitPass() override;
   void addIRPasses() override;
-  void addPreRegAlloc() override;
 
   bool addIRTranslator() override;
   bool addLegalizeMachineIR() override;
@@ -152,10 +152,6 @@ void ParasolPassConfig::addPreEmitPass() {}
 void ParasolPassConfig::addIRPasses() {
   // TargetPassConfig::addIRPasses();
   // addPass(createAnnotateEncryptionPass());
-}
-
-void ParasolPassConfig::addPreRegAlloc() {
-  addPass(createParasolMergeBaseOffsetPass());
 }
 
 bool ParasolPassConfig::addIRTranslator() {
