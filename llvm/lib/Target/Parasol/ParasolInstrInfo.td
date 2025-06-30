@@ -9,6 +9,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Frame index calculations.
+def FrameAddrRegImm : ComplexPattern<iPTR, 2, "SelectFrameAddrRegImm",
+                                     [frameindex]>;
+
+//def AddrRegImm : ComplexPattern<i32, 2, "SelectAddrRegImm">;
+
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
 //===----------------------------------------------------------------------===//
@@ -31,11 +37,13 @@ def callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_CallSeqEnd,
 
 include "ParasolInstrFormats.td"
 
-let Defs = [X2], Uses = [X2] in {
+let isCodeGenOnly = 1, Defs = [X2], Uses = [X2] in {
 def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                               [(callseq_start timm:$amt1, timm:$amt2)]>;
 def ADJCALLSTACKUP   : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                               [(callseq_end timm:$amt1, timm:$amt2)]>;
+def ADDRri : Pseudo<(outs IR:$dst), (ins Parasolimm32:$base, Parasolimm32:$offset),
+                      []>;
 } // end Defs = [X2], Uses = [X2]
 
 
@@ -53,45 +61,51 @@ def LoadImmediate32 : ParasolLoadImm<Parasolimm32, i32>;
 // Load/Store Instructions
 //===----------------------------------------------------------------------===//
 
-def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size), "ldr", "$val, $addr, $size", []> {
+def LOAD : ParasolInst<(outs IR:$val), (ins IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "ldr", "$val, ${offset}(${addr}), $size", []> {
     bits<7> size;
     bits<6> val;
     bits<6> addr;
+    bits<32> offset;
 
     let hasSideEffects = 0;
     let mayLoad = 1;
     let mayStore = 0;
 
+    let Inst{58-27} = offset;
     let Inst{26-20} = size;
     let Inst{19-14} = addr;
     let Inst{13-8} = val;
     let Opcode = OPC_LOAD.Value;
 }
 
-def : Pat<(i1 (load IR:$addr)), (LOAD $addr, 1)>;
-def : Pat<(i8 (load IR:$addr)), (LOAD $addr, 8)>;
-def : Pat<(i16 (load IR:$addr)), (LOAD $addr, 16)>;
-def : Pat<(i32 (load IR:$addr)), (LOAD $addr, 32)>;
+def : Pat<(i1 (load IR:$addr)), (LOAD $addr, 8, 0)>;
 
-def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size), "str", "$addr, $val, $size", []> {
+foreach ty = [i8, i16, i32, i64, i128] in {
+    def : Pat<(ty (load IR:$addr)), (LOAD $addr, ty.Size, 0)>;    
+}
+
+def STORE : ParasolInst<(outs), (ins IR:$val, IR:$addr, Parasolimm32:$size, Parasolimm32:$offset), "str", "${offset}(${addr}), $val, $size", []> {
     bits<7> size;
     bits<6> val;
     bits<6> addr;
+    bits<32> offset;
 
     let hasSideEffects = 0;
     let mayLoad = 0;
     let mayStore = 1;
 
+    let Inst{58-27} = offset;
     let Inst{26-20} = size;
     let Inst{19-14} = val;
     let Inst{13-8} = addr;
     let Opcode = OPC_STORE.Value;
 }
 
-def : Pat<(store i1:$val , IR:$addr), (STORE $val, $addr, 1)>;
-def : Pat<(store i8:$val , IR:$addr), (STORE $val, $addr, 8)>;
-def : Pat<(store i16:$val, IR:$addr), (STORE $val, $addr, 16)>;
-def : Pat<(store i32:$val, IR:$addr), (STORE $val, $addr, 32)>;
+def : Pat<(store i1:$val, IR:$addr), (STORE $val, $addr, 8, 0)>;
+
+foreach ty = [i8, i16, i32, i64, i128] in {
+    def : Pat<(store ty:$val, IR:$addr), (STORE $val, $addr, ty.Size, 0)>;
+}
 
 def MOV : ParasolInst<(outs IR:$dst), (ins IR:$src), "mv", "$dst, $src", []> {
     bits<6> dst;
@@ -126,9 +140,18 @@ class ParasolTruncInst<ValueType to, ValueType from>
 def TRUNC_1_8 : ParasolTruncInst<i1, i8>;
 def TRUNC_1_16 : ParasolTruncInst<i1, i16>;
 def TRUNC_1_32 : ParasolTruncInst<i1, i32>;
+def TRUNC_1_64 : ParasolTruncInst<i1, i64>;
+def TRUNC_1_128 : ParasolTruncInst<i1, i128>;
 def TRUNC_8_16 : ParasolTruncInst<i8, i16>;
 def TRUNC_8_32 : ParasolTruncInst<i8, i32>;
+def TRUNC_8_64 : ParasolTruncInst<i8, i64>;
+def TRUNC_8_128 : ParasolTruncInst<i8, i128>;
 def TRUNC_16_32 : ParasolTruncInst<i16, i32>;
+def TRUNC_16_64 : ParasolTruncInst<i16, i64>;
+def TRUNC_16_128 : ParasolTruncInst<i16, i128>;
+def TRUNC_32_64 : ParasolTruncInst<i32, i64>;
+def TRUNC_32_128 : ParasolTruncInst<i32, i128>;
+def TRUNC_64_128 : ParasolTruncInst<i64, i128>;
 
 class ParasolZExtInst<ValueType to, ValueType from>
     : ParasolInst<(outs IR:$output), (ins IR:$input), "zext", "$output, $input, " # to.Size # ", " # from.Size,
@@ -150,19 +173,37 @@ class ParasolZExtInst<ValueType to, ValueType from>
 def ZEXT_8_1 : ParasolZExtInst<i8, i1>;
 def ZEXT_16_1 : ParasolZExtInst<i16, i1>;
 def ZEXT_32_1 : ParasolZExtInst<i32, i1>;
+def ZEXT_64_1 : ParasolZExtInst<i64, i1>;
+def ZEXT_128_1 : ParasolZExtInst<i128, i1>;
 def ZEXT_16_8 : ParasolZExtInst<i16, i8>;
 def ZEXT_32_8 : ParasolZExtInst<i32, i8>;
+def ZEXT_64_8 : ParasolZExtInst<i64, i8>;
+def ZEXT_128_8 : ParasolZExtInst<i128, i8>;
 def ZEXT_32_16 : ParasolZExtInst<i32, i16>;
+def ZEXT_64_16 : ParasolZExtInst<i64, i16>;
+def ZEXT_128_16 : ParasolZExtInst<i128, i16>;
+def ZEXT_64_32 : ParasolZExtInst<i64, i32>;
+def ZEXT_128_32 : ParasolZExtInst<i128, i32>;
+def ZEXT_128_64 : ParasolZExtInst<i128, i64>;
 
 // Judging from https://github.com/llvm/llvm-project/blob/7470131b43405a07ccafd83aea286d0f35aefb34/llvm/lib/CodeGen/GlobalISel/Utils.cpp#L969-L978
 // anyext is an extension where the higher bits do not matter and the compiler should choose the most efficient instruction from zext and sext
 // here we chose zext
 def : Pat<(i8 (anyext i1:$input)), (ZEXT_8_1 $input)>;
 def : Pat<(i16 (anyext i1:$input)), (ZEXT_16_1 $input)>;
-def : Pat<(i16 (anyext i8:$input)), (ZEXT_16_8 $input)>;
 def : Pat<(i32 (anyext i1:$input)), (ZEXT_32_1 $input)>;
+def : Pat<(i64 (anyext i1:$input)), (ZEXT_64_1 $input)>;
+def : Pat<(i128 (anyext i1:$input)), (ZEXT_128_1 $input)>;
+def : Pat<(i16 (anyext i8:$input)), (ZEXT_16_8 $input)>;
 def : Pat<(i32 (anyext i8:$input)), (ZEXT_32_8 $input)>;
+def : Pat<(i64 (anyext i8:$input)), (ZEXT_64_8 $input)>;
+def : Pat<(i128 (anyext i8:$input)), (ZEXT_128_8 $input)>;
 def : Pat<(i32 (anyext i16:$input)), (ZEXT_32_16 $input)>;
+def : Pat<(i64 (anyext i16:$input)), (ZEXT_64_16 $input)>;
+def : Pat<(i128 (anyext i16:$input)), (ZEXT_128_16 $input)>;
+def : Pat<(i64 (anyext i32:$input)), (ZEXT_64_32 $input)>;
+def : Pat<(i128 (anyext i32:$input)), (ZEXT_128_32 $input)>;
+def : Pat<(i128 (anyext i64:$input)), (ZEXT_128_64 $input)>;
 
 class ParasolSExtInst<ValueType to, ValueType from>
     : ParasolInst<(outs IR:$output), (ins IR:$input), "sext", "$output, $input, " # to.Size # ", " # from.Size,
@@ -184,18 +225,36 @@ class ParasolSExtInst<ValueType to, ValueType from>
 def SEXT_8_1 : ParasolSExtInst<i8, i1>;
 def SEXT_16_1 : ParasolSExtInst<i16, i1>;
 def SEXT_32_1 : ParasolSExtInst<i32, i1>;
+def SEXT_64_1 : ParasolSExtInst<i64, i1>;
+def SEXT_128_1 : ParasolSExtInst<i128, i1>;
 def SEXT_16_8 : ParasolSExtInst<i16, i8>;
 def SEXT_32_8 : ParasolSExtInst<i32, i8>;
+def SEXT_64_8 : ParasolSExtInst<i64, i8>;
+def SEXT_128_8 : ParasolSExtInst<i128, i8>;
 def SEXT_32_16 : ParasolSExtInst<i32, i16>;
+def SEXT_64_16 : ParasolSExtInst<i64, i16>;
+def SEXT_128_16 : ParasolSExtInst<i128, i16>;
+def SEXT_64_32 : ParasolSExtInst<i64, i32>;
+def SEXT_128_32 : ParasolSExtInst<i128, i32>;
+def SEXT_128_64 : ParasolSExtInst<i128, i64>;
 
 // In register sext should also just call our sext operation
 
 def : Pat<(i8 (sext_inreg IR:$input, i1)), (SEXT_8_1 $input)>;
 def : Pat<(i16 (sext_inreg IR:$input, i1)), (SEXT_16_1 $input)>;
-def : Pat<(i16 (sext_inreg IR:$input, i8)), (SEXT_16_8 $input)>;
 def : Pat<(i32 (sext_inreg IR:$input, i1)), (SEXT_32_1 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i1)), (SEXT_64_1 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i1)), (SEXT_128_1 $input)>;
+def : Pat<(i16 (sext_inreg IR:$input, i8)), (SEXT_16_8 $input)>;
 def : Pat<(i32 (sext_inreg IR:$input, i8)), (SEXT_32_8 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i8)), (SEXT_64_8 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i8)), (SEXT_128_8 $input)>;
 def : Pat<(i32 (sext_inreg IR:$input, i16)), (SEXT_32_16 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i16)), (SEXT_64_16 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i16)), (SEXT_128_16 $input)>;
+def : Pat<(i64 (sext_inreg IR:$input, i32)), (SEXT_64_32 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i32)), (SEXT_128_32 $input)>;
+def : Pat<(i128 (sext_inreg IR:$input, i64)), (SEXT_128_64 $input)>;
 
 //===----------------------------------------------------------------------===//
 // Branch instructions
@@ -312,6 +371,8 @@ multiclass Pat1IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1), (inst i8:$rs1)>;
     def _16 : Pat<(OpNode i16:$rs1), (inst i16:$rs1)>;
     def _32 : Pat<(OpNode i32:$rs1), (inst i32:$rs1)>;
+    def _64 : Pat<(OpNode i64:$rs1), (inst i64:$rs1)>;
+    def _128 : Pat<(OpNode i128:$rs1), (inst i128:$rs1)>;
 }
 
 multiclass Pat2IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
@@ -319,6 +380,8 @@ multiclass Pat2IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1, i8:$rs2), (inst i8:$rs1, i8:$rs2)>;
     def _16 : Pat<(OpNode i16:$rs1, i16:$rs2), (inst i16:$rs1, i16:$rs2)>;
     def _32 : Pat<(OpNode i32:$rs1, i32:$rs2), (inst i32:$rs1, i32:$rs2)>;
+    def _64 : Pat<(OpNode i64:$rs1, i64:$rs2), (inst i64:$rs1, i64:$rs2)>;
+    def _128 : Pat<(OpNode i128:$rs1, i128:$rs2), (inst i128:$rs1, i128:$rs2)>;
 }
 
 multiclass PatIrI32MultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
@@ -326,6 +389,8 @@ multiclass PatIrI32MultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1, i32:$rs2), (inst i8:$rs1, i32:$rs2)>;
     def _16 : Pat<(OpNode i16:$rs1, i32:$rs2), (inst i16:$rs1, i32:$rs2)>;
     def _32 : Pat<(OpNode i32:$rs1, i32:$rs2), (inst i32:$rs1, i32:$rs2)>;
+    def _64 : Pat<(OpNode i64:$rs1, i64:$rs2), (inst i64:$rs1, i64:$rs2)>;
+    def _128 : Pat<(OpNode i128:$rs1, i128:$rs2), (inst i128:$rs1, i128:$rs2)>;
 }
 
 multiclass Pat3IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
@@ -333,6 +398,8 @@ multiclass Pat3IrMultiValueType<SDPatternOperator OpNode, ParasolInst inst> {
     def _8 : Pat<(OpNode i8:$rs1, i8:$rs2, i8:$rs3), (inst i8:$rs1, i8:$rs2, i8:$rs3)>;
     def _16 : Pat<(OpNode i16:$rs1, i16:$rs2, i16:$rs3), (inst i16:$rs1, i16:$rs2, i16:$rs3)>;
     def _32 : Pat<(OpNode i32:$rs1, i32:$rs2, i32:$rs3), (inst i32:$rs1, i32:$rs2, i32:$rs3)>;
+    def _64 : Pat<(OpNode i64:$rs1, i64:$rs2, i64:$rs3), (inst i64:$rs1, i64:$rs2, i64:$rs3)>;
+    def _128 : Pat<(OpNode i128:$rs1, i128:$rs2, i128:$rs3), (inst i128:$rs1, i128:$rs2, i128:$rs3)>;
 }
 
 defm : Pat1IrMultiValueType<not, NOTr>;
@@ -367,6 +434,8 @@ multiclass PatComparisonMultiValueType<CondCode condcode, dag pattern> {
     def _8 : Pat<(i1 (setcc i8:$rs1, i8:$rs2, condcode)), pattern>;
     def _16 : Pat<(i1 (setcc i16:$rs1, i16:$rs2, condcode)), pattern>;
     def _32 : Pat<(i1 (setcc i32:$rs1, i32:$rs2, condcode)), pattern>;
+    def _64 : Pat<(i1 (setcc i64:$rs1, i64:$rs2, condcode)), pattern>;
+    def _128 : Pat<(i1 (setcc i128:$rs1, i128:$rs2, condcode)), pattern>;
 }
 
 defm : PatComparisonMultiValueType<SETUGT, (GTrr $rs1, $rs2)>;
@@ -416,6 +485,12 @@ def : Pat<(i16 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
 def : Pat<(i32 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
           (ZEXT_32_1 (TRUNC_1_32 (SHRrr $rs1, $n)))>;
 
+def : Pat<(i64 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
+          (ZEXT_64_1 (TRUNC_1_64 (SHRrr $rs1, $n)))>;
+
+def : Pat<(i128 (and (srl IR:$rs1, Parasolimm32:$n), 1)),
+          (ZEXT_128_1 (TRUNC_1_128 (SHRrr $rs1, $n)))>;
+
 // If we and with 1 we just take the least significant bit.
 def : Pat<(i8 (and i8:$rs1, 1)),
           (ZEXT_8_1 (TRUNC_1_8 $rs1))>;
@@ -425,6 +500,12 @@ def : Pat<(i16 (and i16:$rs1, 1)),
 
 def : Pat<(i32 (and i32:$rs1, 1)),
           (ZEXT_32_1 (TRUNC_1_32 $rs1))>;
+
+def : Pat<(i64 (and i64:$rs1, 1)),
+          (ZEXT_64_1 (TRUNC_1_64 $rs1))>;
+
+def : Pat<(i128 (and i128:$rs1, 1)),
+          (ZEXT_128_1 (TRUNC_1_128 $rs1))>;
 
 // We have a specific pattern when a truncation is performed, which is bit selecting zero.
 
@@ -436,6 +517,12 @@ def : Pat<(i1 (trunc (srl i16:$rs1, Parasolimm32:$n))),
 
 def : Pat<(i1 (trunc (srl i32:$rs1, Parasolimm32:$n))),
             (TRUNC_1_32 (SHRrr $rs1, $n))>;
+
+def : Pat<(i1 (trunc (srl i64:$rs1, Parasolimm32:$n))),
+            (TRUNC_1_64 (SHRrr $rs1, $n))>;
+
+def : Pat<(i1 (trunc (srl i128:$rs1, Parasolimm32:$n))),
+            (TRUNC_1_128 (SHRrr $rs1, $n))>;
 
 // We shift by a immediate value, and with 1, and then check for equality with a
 // boolean is just a bit select.
@@ -540,6 +627,8 @@ defm : BrNePats<i1>;
 defm : BrNePats<i8>;
 defm : BrNePats<i16>;
 defm : BrNePats<i32>;
+defm : BrNePats<i64>;
+defm : BrNePats<i128>;
 
 multiclass BrCondPats<PatFrag Op, Instruction MachOp,  ValueType T> {
     def : Pat<(brcond (i1 (Op T:$lhs, T:$rhs)), bb:$loc),
@@ -551,54 +640,72 @@ defm : BrCondPats<seteq, EQrr, i1>;
 defm : BrCondPats<seteq, EQrr, i8>;
 defm : BrCondPats<seteq, EQrr, i16>;
 defm : BrCondPats<seteq, EQrr, i32>;
+defm : BrCondPats<seteq, EQrr, i64>;
+defm : BrCondPats<seteq, EQrr, i128>;
 
 // brgt (signed)
 defm : BrCondPats<setgt, GTSrr, i1>;
 defm : BrCondPats<setgt, GTSrr, i8>;
 defm : BrCondPats<setgt, GTSrr, i16>;
 defm : BrCondPats<setgt, GTSrr, i32>;
+defm : BrCondPats<setgt, GTSrr, i64>;
+defm : BrCondPats<setgt, GTSrr, i128>;
 
 // brge (signed)
 defm : BrCondPats<setge, GESrr, i1>;
 defm : BrCondPats<setge, GESrr, i8>;
 defm : BrCondPats<setge, GESrr, i16>;
 defm : BrCondPats<setge, GESrr, i32>;
+defm : BrCondPats<setge, GESrr, i64>;
+defm : BrCondPats<setge, GESrr, i128>;
 
 // brlt (signed)
 defm : BrCondPats<setlt, LTSrr, i1>;
 defm : BrCondPats<setlt, LTSrr, i8>;
 defm : BrCondPats<setlt, LTSrr, i16>;
 defm : BrCondPats<setlt, LTSrr, i32>;
+defm : BrCondPats<setlt, LTSrr, i64>;
+defm : BrCondPats<setlt, LTSrr, i128>;
 
 // brle (signed)
 defm : BrCondPats<setle, LESrr, i1>;
 defm : BrCondPats<setle, LESrr, i8>;
 defm : BrCondPats<setle, LESrr, i16>;
 defm : BrCondPats<setle, LESrr, i32>;
+defm : BrCondPats<setle, LESrr, i64>;
+defm : BrCondPats<setle, LESrr, i128>;
 
 // brugt (unsigned)
 defm : BrCondPats<setugt, GTrr, i1>;
 defm : BrCondPats<setugt, GTrr, i8>;
 defm : BrCondPats<setugt, GTrr, i16>;
 defm : BrCondPats<setugt, GTrr, i32>;
+defm : BrCondPats<setugt, GTrr, i64>;
+defm : BrCondPats<setugt, GTrr, i128>;
 
 // bruge (unsigned)
 defm : BrCondPats<setuge, GErr, i1>;
 defm : BrCondPats<setuge, GErr, i8>;
 defm : BrCondPats<setuge, GErr, i16>;
 defm : BrCondPats<setuge, GErr, i32>;
+defm : BrCondPats<setuge, GErr, i64>;
+defm : BrCondPats<setuge, GErr, i128>;
 
 // brult (unsigned)
 defm : BrCondPats<setult, LTrr, i1>;
 defm : BrCondPats<setult, LTrr, i8>;
 defm : BrCondPats<setult, LTrr, i16>;
 defm : BrCondPats<setult, LTrr, i32>;
+defm : BrCondPats<setult, LTrr, i64>;
+defm : BrCondPats<setult, LTrr, i128>;
 
 // brule (unsigned)
 defm : BrCondPats<setule, LErr, i1>;
 defm : BrCondPats<setule, LErr, i8>;
 defm : BrCondPats<setule, LErr, i16>;
 defm : BrCondPats<setule, LErr, i32>;
+defm : BrCondPats<setule, LErr, i64>;
+defm : BrCondPats<setule, LErr, i128>;
 
 //===----------------------------------------------------------------------===//
 // Select patterns
@@ -610,10 +717,19 @@ multiclass PatSelect<ValueType comparisonvt> {
 
     // Convert when you have PR input to load the value first
     def : Pat<(comparisonvt (load (select i1:$bool, IR:$trueval, IR:$falseval))),
-              (CMUXrrr $bool, (LOAD $trueval, comparisonvt.Size), (LOAD $falseval, comparisonvt.Size))>;
+              (CMUXrrr $bool, (LOAD $trueval, comparisonvt.Size, 0), (LOAD $falseval, comparisonvt.Size, 0))>;
 }
 
 defm : PatSelect<i1>;
 defm : PatSelect<i8>;
 defm : PatSelect<i16>;
 defm : PatSelect<i32>;
+defm : PatSelect<i64>;
+defm : PatSelect<i128>;
+
+//===----------------------------------------------------------------------===//
+// Stack patterns
+//===----------------------------------------------------------------------===//
+
+def : Pat<(FrameAddrRegImm (iPTR IR:$rs1), Parasolimm32:$offset),
+    (ADDRri IR:$rs1, Parasolimm32:$offset)>;

@@ -26,7 +26,7 @@ bool ParasolDAGToDAGISel::runOnMachineFunction(MachineFunction &MF) {
 }
 
 void ParasolDAGToDAGISel::Select(SDNode *Node) {
-  unsigned Opcode = Node->getOpcode();
+  SDLoc dl(Node);
 
   // If we have a custom node, we already have selected!
   if (Node->isMachineOpcode()) {
@@ -35,13 +35,40 @@ void ParasolDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
 
-  // Instruction Selection not handled by the auto-generated tablegen selection
-  // should be handled here.
-  switch (Opcode) {
-  default:
-    break;
-  }
-
   // Select the default instruction
   SelectCode(Node);
+}
+
+bool ParasolDAGToDAGISel::SelectAddrFrameIndex(SDValue Addr, SDValue &Base,
+                                               SDValue &Offset) {
+  if (auto *FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
+    Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i32);
+    Offset = CurDAG->getTargetConstant(0, SDLoc(Addr), MVT::i32);
+    return true;
+  }
+
+  return false;
+}
+
+// Select a frame index.
+bool ParasolDAGToDAGISel::SelectFrameAddrRegImm(SDValue Addr, SDValue &Base,
+                                                SDValue &Offset) {
+  if (SelectAddrFrameIndex(Addr, Base, Offset)) {
+    return true;
+  }
+
+  if (!CurDAG->isBaseWithConstantOffset(Addr)) {
+    return false;
+  }
+
+  if (auto *FIN = dyn_cast<FrameIndexSDNode>(Addr.getOperand(0))) {
+    int64_t CVal = cast<ConstantSDNode>(Addr.getOperand(1))->getSExtValue();
+    if (isInt<32>(CVal)) {
+      Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i32);
+      Offset = CurDAG->getTargetConstant(CVal, SDLoc(Addr), MVT::i32);
+      return true;
+    }
+  }
+
+  return false;
 }

@@ -48,6 +48,8 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::i8, &Parasol::IRRegClass);
   addRegisterClass(MVT::i16, &Parasol::IRRegClass);
   addRegisterClass(MVT::i32, &Parasol::IRRegClass);
+  addRegisterClass(MVT::i64, &Parasol::IRRegClass);
+  addRegisterClass(MVT::i128, &Parasol::IRRegClass);
 
   // Must, computeRegisterProperties - Once all of the register classes are
   // added, this allows us to compute derived properties we expose.
@@ -75,19 +77,35 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
 
   // Parasol has no select or setcc: expand to SELECT_CC.
-  setOperationAction({ISD::SELECT_CC}, {MVT::i1, MVT::i8, MVT::i16, MVT::i32},
-                     Expand);
+  setOperationAction(
+      {ISD::SELECT_CC},
+      {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}, Expand);
 
+  setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i16,
+                   MVT::i8, Expand);
   setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i32,
                    {MVT::i8, MVT::i16}, Expand);
+  setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i64,
+                   {MVT::i8, MVT::i16, MVT::i32}, Expand);
+  setLoadExtAction({ISD::EXTLOAD, ISD::ZEXTLOAD, ISD::SEXTLOAD}, MVT::i128,
+                   {MVT::i8, MVT::i16, MVT::i32, MVT::i64}, Expand);
 
+  setTruncStoreAction(MVT::i16, MVT::i8, Expand);
   setTruncStoreAction(MVT::i32, MVT::i8, Expand);
   setTruncStoreAction(MVT::i32, MVT::i16, Expand);
+  setTruncStoreAction(MVT::i64, MVT::i8, Expand);
+  setTruncStoreAction(MVT::i64, MVT::i16, Expand);
+  setTruncStoreAction(MVT::i64, MVT::i32, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i8, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i16, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i32, Expand);
+  setTruncStoreAction(MVT::i128, MVT::i64, Expand);
 
   // Branches
   // setOperationAction(ISD::BRCOND, MVT::i1, Custom);
-  setOperationAction(ISD::BR_CC, {MVT::i1, MVT::i8, MVT::i16, MVT::i32},
-                     Expand);
+  setOperationAction(
+      ISD::BR_CC, {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128},
+      Expand);
 
   // Set minimum and preferred function alignment (log2)
   setMinFunctionAlignment(Align(8));
@@ -119,81 +137,23 @@ void ParasolTargetLowering::ReplaceNodeResults(
 //===----------------------------------------------------------------------===//
 //@            Formal Arguments Calling Convention Implementation
 //===----------------------------------------------------------------------===//
-
-// The BeyondRISC calling convention parameter registers.
-static const MCPhysReg GPRArgRegs[] = {Parasol::X10, Parasol::X11, Parasol::X12,
-                                       Parasol::X13, Parasol::X14, Parasol::X15,
-                                       Parasol::X16, Parasol::X17};
-
 bool assignArg(const DataLayout &DL, unsigned ValNo, MVT ValVT, MVT LocVT,
                CCValAssign::LocInfo LocInfo, ISD::ArgFlagsTy ArgFlags,
                CCState &State, bool IsRet, Type *OrigTy,
                const ParasolTargetLowering &TLI) {
-  // We use RISCV's RV32 calling convention.
-  unsigned XLen = 4;
-  unsigned TwoXLen = 8;
-
-  SmallVectorImpl<CCValAssign> &PendingLocs = State.getPendingLocs();
-  SmallVectorImpl<ISD::ArgFlagsTy> &PendingArgFlags =
-      State.getPendingArgFlags();
-
   unsigned ValSize = ValVT.getStoreSize();
   Align ValAlign = Align(ValSize);
 
-  // Handle 8-byte values split over 2 registers.
-  if (ValVT.isScalarInteger() && (ArgFlags.isSplit() || !PendingLocs.empty())) {
-    // If this isn't the last value, store it for later and move to the next
-    // one.
-    if (!ArgFlags.isSplitEnd()) {
-      LocVT = MVT::i32;
-      LocInfo = CCValAssign::Indirect;
-      PendingLocs.push_back(
-          CCValAssign::getPending(ValNo, ValVT, LocVT, LocInfo));
-      PendingArgFlags.push_back(ArgFlags);
-
-      return false;
-    } else {
-      assert(PendingLocs.size() == 1 && "Unexpected PendingLocs.size()");
-      CCValAssign VALLo = PendingLocs[0];
-      ISD::ArgFlagsTy AFLo = PendingArgFlags[0];
-      PendingLocs.clear();
-      PendingArgFlags.clear();
-
-      // Try placing the lo word in a register. Failing that, it goes on the
-      // stack.
-      if (Register Reg = State.AllocateReg(GPRArgRegs)) {
-        State.addLoc(CCValAssign::getReg(VALLo.getValNo(), VALLo.getValVT(),
-                                         Reg, VALLo.getLocVT(),
-                                         CCValAssign::Full));
-      } else {
-        State.addLoc(CCValAssign::getMem(
-            VALLo.getValNo(), VALLo.getValVT(),
-            State.AllocateStack(XLen, Align(AFLo.getNonZeroOrigAlign())),
-            VALLo.getLocVT(), CCValAssign::Full));
-      }
-
-      // Now try placing the hi word. Again, it goes on the stack if no
-      // registers are available.
-      if (Register Reg = State.AllocateReg(GPRArgRegs)) {
-        State.addLoc(
-            CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, CCValAssign::Full));
-      } else {
-        State.addLoc(CCValAssign::getMem(ValNo, ValVT,
-                                         State.AllocateStack(XLen, Align(XLen)),
-                                         LocVT, CCValAssign::Full));
-      }
-    }
-  } else if (ValSize <= 4) { // <= 4-byte values go in a register/stack
-    if (Register Reg = State.AllocateReg(GPRArgRegs)) {
-      State.addLoc(CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, LocInfo));
-    } else {
-      State.addLoc(CCValAssign::getMem(ValNo, ValVT,
-                                       State.AllocateStack(ValSize, ValAlign),
-                                       LocVT, LocInfo));
-    }
-  } else { // Larger values are passed by reference.
-    assert("Unimplemented");
+  // Large value return pointer lives in X10, not the stack.
+  if (ArgFlags.isSRet()) {
+    assert(ValVT == MVT::i32 && "Large value return pointer should be i32.");
+    State.addLoc(
+        CCValAssign::getReg(ValNo, ValVT, Parasol::X10, MVT::i32, LocInfo));
+    return false;
   }
+
+  int64_t StackOffset = State.AllocateStack(ValSize, ValAlign);
+  State.addLoc(CCValAssign::getMem(ValNo, ValVT, StackOffset, LocVT, LocInfo));
 
   return false;
 }
@@ -220,18 +180,6 @@ void ParasolTargetLowering::analyzeInputArgs(
                         << '\n');
       llvm_unreachable(nullptr);
     }
-  }
-}
-
-void ParasolTargetLowering::analyzeOutputArgs(
-    MachineFunction &MF, CCState &CCInfo,
-    const SmallVectorImpl<ISD::OutputArg> &Outs) const {
-
-  for (unsigned i = 0; i < Outs.size(); i++) {
-    MVT ArgVT = Outs[i].VT;
-
-    Register Reg = CCInfo.AllocateReg(GPRArgRegs);
-    CCInfo.addLoc(CCValAssign::getReg(i, ArgVT, Reg, ArgVT, CCValAssign::Full));
   }
 }
 
@@ -296,35 +244,28 @@ static SDValue unpackFromRegLoc(SelectionDAG &DAG, SDValue Chain,
 static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
                                 const CCValAssign &VA, const SDLoc &DL) {
   MachineFunction &MF = DAG.getMachineFunction();
+
   MachineFrameInfo &MFI = MF.getFrameInfo();
   EVT LocVT = VA.getLocVT();
   EVT ValVT = VA.getValVT();
-  EVT PtrVT = MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0));
-  if (ValVT.isScalableVector()) {
-    // When the value is a scalable vector, we save the pointer which points to
-    // the scalable vector value in the stack. The ValVT will be the pointer
-    // type, instead of the scalable vector type.
-    ValVT = LocVT;
-  }
+
   int FI = MFI.CreateFixedObject(ValVT.getStoreSize(), VA.getLocMemOffset(),
                                  /*IsImmutable=*/true);
-  SDValue FIN = DAG.getFrameIndex(FI, PtrVT);
+  SDValue FIN = DAG.getFrameIndex(
+      FI, MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0)));
   SDValue Val;
 
-  ISD::LoadExtType ExtType;
   switch (VA.getLocInfo()) {
   default:
     llvm_unreachable("Unexpected CCValAssign::LocInfo");
   case CCValAssign::Full:
   case CCValAssign::Indirect:
   case CCValAssign::BCvt:
-    ExtType = ISD::NON_EXTLOAD;
     break;
   }
-  Val = DAG.getExtLoad(
-      ExtType, DL, LocVT, Chain, FIN,
-      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI), ValVT);
-  return Val;
+  return DAG.getLoad(
+      LocVT, DL, Chain, FIN,
+      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
 }
 
 /// LowerFormalArguments - transform physical registers into virtual registers
@@ -355,14 +296,18 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
   analyzeInputArgs(MF, CCInfo, Ins, false);
 
   for (unsigned i = 0, e = ArgLocs.size(), InsIdx = 0; i != e; ++i, ++InsIdx) {
+    auto In = Ins[i];
+
+    // If the frontend emitted a return pointer, it's in X10.
+    if (Ins[i].Flags.isSRet()) {
+      InVals.push_back(DAG.getCopyFromReg(Chain, DL, Parasol::X10, MVT::i32));
+      continue;
+    }
+
     CCValAssign &VA = ArgLocs[i];
     SDValue ArgValue;
 
-    if (VA.isRegLoc()) {
-      ArgValue = unpackFromRegLoc(DAG, Chain, VA, DL, Ins[InsIdx], *this);
-    } else {
-      ArgValue = unpackFromMemLoc(DAG, Chain, VA, DL);
-    }
+    ArgValue = unpackFromMemLoc(DAG, Chain, VA, DL);
 
     InVals.push_back(ArgValue);
   }
@@ -375,21 +320,9 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
 //===----------------------------------------------------------------------===//
 
 bool ParasolTargetLowering::CanLowerReturn(
-    CallingConv::ID CallConv, MachineFunction &MF, bool isVarArg,
+    CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
-  SmallVector<CCValAssign, 16> RVLocs;
-  switch (Outs.size()) {
-  case 0:
-    return true;
-  case 1:
-    return Outs[0].VT.getStoreSize() <= 8;
-  case 2:
-    return Outs[0].VT.getStoreSize() + Outs[1].VT.getStoreSize() <= 8;
-  default:
-    return false;
-  }
-
-  return false;
+  return true;
 }
 
 /// LowerMemOpCallTo - Store the argument to the stack.
@@ -465,59 +398,7 @@ ParasolTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 /// this.
 
 void ParasolTargetLowering::HandleByVal(CCState *State, unsigned &Size,
-                                        Align align) const {
-  // Byval (as with any stack) slots are always at least 4 byte aligned.
-  // TODO: Look into how to replicate this but with the Align type.
-  // align = std::max(align, 4U);
-  align = Align(std::max(align.value(), (uint64_t)4));
-
-  unsigned Reg = State->AllocateReg(GPRArgRegs);
-  if (!Reg)
-    return;
-
-  // TODO: Use of .value() may be wrong here
-  unsigned AlignInRegs = align.value() / 4;
-  unsigned Waste = (Parasol::X4 - Reg) % AlignInRegs;
-  for (unsigned i = 0; i < Waste; ++i)
-    Reg = State->AllocateReg(GPRArgRegs);
-
-  if (!Reg)
-    return;
-
-  unsigned Excess = 4 * (Parasol::X4 - Reg);
-
-  // Special case when NSAA != SP and parameter size greater than size of
-  // all remained GPR regs. In that case we can't split parameter, we must
-  // send it to stack. We also must set NCRN to X4, so waste all
-  // remained registers.
-  // TODO: Check if getStackSize is the replacement for getNextStackOffset
-  // https://reviews.llvm.org/D149566
-  const unsigned NSAAOffset = State->getStackSize();
-  if (NSAAOffset != 0 && Size > Excess) {
-    while (State->AllocateReg(GPRArgRegs))
-      ;
-    return;
-  }
-
-  // First register for byval parameter is the first register that wasn't
-  // allocated before this method call, so it would be "reg".
-  // If parameter is small enough to be saved in range [reg, r4), then
-  // the end (first after last) register would be reg + param-size-in-regs,
-  // else parameter would be splitted between registers and stack,
-  // end register would be r4 in this case.
-  unsigned ByValRegBegin = Reg;
-  unsigned ByValRegEnd = std::min<unsigned>(Reg + Size / 4, Parasol::X4);
-  State->addInRegsParamInfo(ByValRegBegin, ByValRegEnd);
-  // Note, first register is allocated in the beginning of function already,
-  // allocate remained amount of registers we need.
-  for (unsigned i = Reg + 1; i != ByValRegEnd; ++i)
-    State->AllocateReg(GPRArgRegs);
-  // A byval parameter that is split between registers and memory needs its
-  // size truncated here.
-  // In the case where the entire structure fits in registers, we set the
-  // size in memory to zero.
-  Size = std::max<int>(Size - Excess, 0);
-}
+                                        Align align) const {}
 
 SDValue
 ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
@@ -525,38 +406,31 @@ ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                    const SmallVectorImpl<ISD::OutputArg> &Outs,
                                    const SmallVectorImpl<SDValue> &OutVals,
                                    const SDLoc &DL, SelectionDAG &DAG) const {
-  SmallVector<CCValAssign, 16> RVLocs;
   SmallVector<SDValue, 4> RetOps(1, Chain);
   MachineFunction &MF = DAG.getMachineFunction();
-  CCState CCInfo(CallConv, isVarArg, MF, RVLocs, *DAG.getContext());
-  SDValue Glue;
 
-  // The caller has split up > 4-byte values on our behalf.
-  if (OutVals.size() > 2) {
-    assert("Cannot return more than 2 values in registers.");
-  }
+  int64_t Offset = 0;
 
-  analyzeOutputArgs(MF, CCInfo, Outs);
-
-  for (size_t i = 0; i < RVLocs.size(); i++) {
+  for (size_t i = 0; i < Outs.size(); i++) {
+    ISD::OutputArg Out = Outs[i];
     SDValue Val = OutVals[i];
-    CCValAssign &VA = RVLocs[i];
 
-    // Explicitly zero-extend values too small for 4-bytes.
-    if (VA.getValVT().getStoreSize() < 4) {
-      Val = DAG.getZeroExtendInReg(Val, DL, MVT::i32);
-    }
+    int64_t Size = Val.getValueType().getStoreSize();
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Glue);
-    Glue = Chain.getValue(1);
-    RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
+    // Align our offset to the next allowable address.
+    Offset += (Size - Offset % Size) % Size;
+
+    SDValue ReturnPtr = DAG.getRegister(Parasol::X10, MVT::i32);
+    SDValue OffsetNode = DAG.getConstant(Offset, DL, MVT::i32);
+    SDValue StorePtr =
+        DAG.getNode(ISD::ADD, DL, MVT::i32, ReturnPtr, OffsetNode);
+    Chain = DAG.getStore(Chain, DL, Val, StorePtr,
+                         MachinePointerInfo::getUnknownStack(MF));
+
+    Offset += Size;
   }
 
   RetOps[0] = Chain;
-
-  if (Glue.getNode()) {
-    RetOps.push_back(Glue);
-  }
 
   return DAG.getNode(ParasolISD::RetGlue, DL, MVT::Other, RetOps);
 }
@@ -633,10 +507,19 @@ ParasolTargetLowering::getRegForInlineAsmConstraint(
   }
 }
 
-MVT ParasolTargetLowering::getRegVTForConstraintVT(const TargetRegisterInfo *TRI, const TargetRegisterClass *RC, MVT ConstraintVT) const {
+MVT ParasolTargetLowering::getRegVTForConstraintVT(
+    const TargetRegisterInfo *TRI, const TargetRegisterClass *RC,
+    MVT ConstraintVT) const {
   if (!ConstraintVT.isInteger()) {
     return TargetLowering::getRegVTForConstraintVT(TRI, RC, ConstraintVT);
   }
 
   return ConstraintVT;
+}
+
+EVT ParasolTargetLowering::getTypeForExtReturn(
+    LLVMContext &Context, EVT VT, ISD::NodeType /*ExtendKind*/) const {
+  // We don't ever sign extend the return type since they're always on the
+  // stack.
+  return VT;
 }

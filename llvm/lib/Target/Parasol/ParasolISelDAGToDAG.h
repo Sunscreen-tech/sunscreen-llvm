@@ -33,6 +33,10 @@ public:
 
   void Select(SDNode *Node) override;
 
+  bool SelectAddrFrameIndex(SDValue Addr, SDValue &Base, SDValue &Offset);
+
+  bool SelectFrameAddrRegImm(SDValue Addr, SDValue &Base, SDValue &Offset);
+
 #include "ParasolGenDAGISel.inc"
 
 private:

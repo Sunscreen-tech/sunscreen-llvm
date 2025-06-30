@@ -24,9 +24,9 @@ protected:
 public:
   explicit ParasolFrameLowering(const ParasolSubtarget &STI)
       : TargetFrameLowering(TargetFrameLowering::StackGrowsDown,
-                            /*StackAlignment*/ Align(4),
+                            /*StackAlignment*/ Align(16),
                             /*LocalAreaOffset*/ 0,
-                            /*TransAl*/ Align(4)),
+                            /*TransAl*/ Align(16)),
         STI(STI) {}
 
   void emitPrologue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
