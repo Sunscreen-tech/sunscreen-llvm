@@ -69,7 +69,7 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   // use either RegPressure or Hybrid
   setSchedulingPreference(Sched::RegPressure);
 
-  setBooleanContents(ZeroOrOneBooleanContent);
+  setBooleanContents(ZeroOrNegativeOneBooleanContent);
   setBooleanVectorContents(ZeroOrOneBooleanContent);
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
