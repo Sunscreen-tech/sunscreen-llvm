@@ -19,7 +19,7 @@ fi
 
 # Detect architecture
 ARCH=$(uname -m)
-if [[ "$ARCH" == "arm64" ]]; then
+if [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
     ARCH="aarch64"
 elif [[ "$ARCH" == "x86_64" ]]; then
     ARCH="x86-64"
