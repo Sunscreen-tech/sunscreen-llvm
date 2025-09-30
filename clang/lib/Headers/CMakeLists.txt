@@ -8,6 +8,7 @@ set(core_files
   iso646.h
   limits.h
   module.modulemap
+  parasol.h
   stdalign.h
   stdarg.h
   __stdarg___gnuc_va_list.h
