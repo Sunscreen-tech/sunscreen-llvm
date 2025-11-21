@@ -10,16 +10,23 @@ Please ensure that your pull request addresses the following points:
 
 ## Release Checklist (if creating a new release)
 
-If this PR is for creating a new release, please complete the following:
+If this PR is for creating a new release, use `./release-all.sh` to build all architectures and update the Nix configuration:
 
-- [ ] Update the version in `sunscreen-llvm.nix` (format: YYYY.MM.DD)
-- [ ] Run `./package-release.sh` for all supported architectures:
-    - [ ] macOS aarch64
-    - [ ] Linux aarch64
-    - [ ] Linux x86-64
-- [ ] Update SHA256 hashes in `sunscreen-llvm.nix` for all three tarballs
-- [ ] Follow the tag naming format: vYYYY.MM.DD (e.g., v2025.09.30)
-- [ ] Create GitHub release with all tarballs attached
+```bash
+./release-all.sh              # Uses today's date
+./release-all.sh 2025.11.21   # Custom version
+```
+
+The script builds macOS (native) and Linux (Docker) tarballs, calculates hashes, and updates `sunscreen-llvm.nix`.
+
+Before merging:
+- [ ] Review changes: `git diff sunscreen-llvm.nix`
+- [ ] Commit: `git add sunscreen-llvm.nix && git commit -m 'chore: release vYYYY.MM.DD'`
+
+After PR is merged:
+- [ ] Create tag on main branch: `git tag vYYYY.MM.DD`
+- [ ] Push tag: `git push origin vYYYY.MM.DD`
+- [ ] Create GitHub release with tarballs from `releases/` directory
 
 ---
 

@@ -28,8 +28,9 @@ else
     exit 1
 fi
 
-# Get date in YYYY-MM-DD format
-DATE=$(date +%Y-%m-%d)
+# Get version from argument or use today's date in YYYY-MM-DD format
+VERSION="${1:-$(date +%Y-%m-%d)}"
+DATE="${VERSION}"
 
 # Define paths
 BUILD_BIN="build/bin"
