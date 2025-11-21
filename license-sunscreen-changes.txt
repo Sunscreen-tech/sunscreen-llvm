@@ -36,7 +36,7 @@ clang/lib/Driver/CMakeLists.txt
 clang/lib/Driver/Driver.cpp
 clang/lib/Driver/ToolChains/Parasol.cpp
 clang/lib/Driver/ToolChains/Parasol.h
-clang/lib/Header/parasol.h
+clang/lib/Headers/parasol.h
 clang/lib/Sema/SemaDeclAttr.cpp
 clang/lib/Sema/SemaType.cpp
 compile-llvm.sh
@@ -152,3 +152,8 @@ llvm/test/CodeGen/Parasol/GlobalISel/void.ll
 llvm/utils/gn/secondary/llvm/include/llvm/Config/BUILD.gn
 llvm/utils/gn/secondary/llvm/lib/Target/targets.gni
 utils/bazel/llvm_configs/llvm-config.h.cmake
+parasol-tests/.gitignore
+parasol-tests/run_tests.sh
+parasol-tests/test_array_reductions.c
+parasol-tests/test_array_sort.c
+parasol-tests/test_utilities.c
