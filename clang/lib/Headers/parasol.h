@@ -374,8 +374,8 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
   }
 
 // Tree reduction for sum - uses wider accumulator to reduce overflow risk
-#define DEFINE_SUM_ARRAY(SUFFIX, INPUT_TYPE, SUM_TYPE)                         \
-  static inline SUM_TYPE sum##SUFFIX##_array(                                  \
+#define DEFINE_SUM_ARRAY(NAME, INPUT_TYPE, SUM_TYPE)                           \
+  static inline SUM_TYPE NAME##_array(                                         \
       const INPUT_TYPE *arr, uint16_t len, SUM_TYPE *scratch) {                \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = (SUM_TYPE)arr[i];                                           \
@@ -441,7 +441,6 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 #define GENERATE_ARRAY_OPS_UNSIGNED(BITS)                                      \
   DEFINE_MIN_ARRAY(BITS, uint##BITS##_t, select##BITS)                         \
   DEFINE_MAX_ARRAY(BITS, uint##BITS##_t, select##BITS)                         \
-  DEFINE_SUM_ARRAY(BITS, uint##BITS##_t, uint64_t)                             \
   DEFINE_COMPARE_SWAP(uint##BITS, uint##BITS##_t, select##BITS)                \
   DEFINE_BITONIC_SORT(uint##BITS, uint##BITS##_t)
 
@@ -490,37 +489,44 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
     return scratch[0];                                                         \
   }
 
-#define DEFINE_SUM_ARRAY_SIGNED(BITS)                                          \
-  static inline int64_t isum##BITS##_array(const int##BITS##_t *arr,           \
-                                           uint16_t len, int64_t *scratch) {   \
-    for (uint32_t i = 0; i < len; i++) {                                       \
-      scratch[i] = (int64_t)arr[i];                                            \
-    }                                                                          \
-    for (uint32_t current_len = len; current_len > 1;) {                       \
-      uint32_t next_len = current_len / 2;                                     \
-      for (uint32_t i = 0; i < next_len; i++) {                                \
-        scratch[i] = scratch[2 * i] + scratch[2 * i + 1];                      \
-      }                                                                        \
-      if (current_len % 2 == 1) {                                              \
-        scratch[next_len] = scratch[current_len - 1];                          \
-        next_len++;                                                            \
-      }                                                                        \
-      current_len = next_len;                                                  \
-    }                                                                          \
-    return scratch[0];                                                         \
-  }
-
 // Generate functions for signed types
 #define GENERATE_ARRAY_OPS_SIGNED(BITS)                                        \
   DEFINE_MIN_ARRAY_SIGNED(BITS)                                                \
   DEFINE_MAX_ARRAY_SIGNED(BITS)                                                \
-  DEFINE_SUM_ARRAY_SIGNED(BITS)                                                \
   DEFINE_COMPARE_SWAP(int##BITS, int##BITS##_t, iselect##BITS)                 \
   DEFINE_BITONIC_SORT(int##BITS, int##BITS##_t)
 
 GENERATE_ARRAY_OPS_UNSIGNED(8)
 GENERATE_ARRAY_OPS_UNSIGNED(16)
 GENERATE_ARRAY_OPS_UNSIGNED(32)
+
+// Sum functions for unsigned types
+// Function naming: sum<input_bits>_<output_bits>_array
+//
+// Choosing accumulator size:
+//   - Known small arrays or bounded sums: use smallest safe accumulator
+//   - Unknown/dynamic array sizes: use next larger accumulator for safety margin
+//   - Critical correctness requirements: use largest accumulator (64-bit)
+//   - Performance-critical with validated bounds: use matching-size accumulator
+//
+// Overflow safety: max_safe_elements = MAX_ACCUMULATOR / MAX_INPUT_VALUE
+//   Example: sum8_16 safe for 65535/255 = 257 elements of max value
+
+// 8-bit input sum functions
+DEFINE_SUM_ARRAY(sum8_16, uint8_t, uint16_t)   // Up to 257 elements of max value (255)
+DEFINE_SUM_ARRAY(sum8_32, uint8_t, uint32_t)   // Up to 16M elements of max value
+DEFINE_SUM_ARRAY(sum8_64, uint8_t, uint64_t)   // Maximum safety (72+ quadrillion elements)
+
+// 16-bit input sum functions
+DEFINE_SUM_ARRAY(sum16_32, uint16_t, uint32_t) // Up to 65537 elements of max value (65535)
+DEFINE_SUM_ARRAY(sum16_64, uint16_t, uint64_t) // Maximum safety (281+ trillion elements)
+
+// 32-bit input sum functions
+DEFINE_SUM_ARRAY(sum32_64, uint32_t, uint64_t) // Safe default (4+ billion elements of max value)
+DEFINE_SUM_ARRAY(sum32_32, uint32_t, uint32_t) // Performance option (overflow possible, use with care)
+
+// 64-bit input sum function
+DEFINE_SUM_ARRAY(sum64_64, uint64_t, uint64_t) // Same size (no 128-bit available, overflow possible)
 
 // Generate 64-bit unsigned functions except sum (sum64 would overflow without 128-bit accumulator)
 DEFINE_MIN_ARRAY(64, uint64_t, select64)
@@ -531,6 +537,30 @@ DEFINE_BITONIC_SORT(uint64, uint64_t)
 GENERATE_ARRAY_OPS_SIGNED(8)
 GENERATE_ARRAY_OPS_SIGNED(16)
 GENERATE_ARRAY_OPS_SIGNED(32)
+
+// Sum functions for signed types
+// Function naming: isum<input_bits>_<output_bits>_array
+// See unsigned sum functions above for accumulator size selection guidance
+//
+// Overflow safety for signed: check both positive and negative bounds
+//   Positive: max_safe_elements = MAX_ACCUMULATOR / MAX_INPUT_VALUE
+//   Negative: max_safe_elements = abs(MIN_ACCUMULATOR) / abs(MIN_INPUT_VALUE)
+
+// 8-bit input sum functions
+DEFINE_SUM_ARRAY(isum8_16, int8_t, int16_t)   // Up to 257 elements (32767/127, 32768/128)
+DEFINE_SUM_ARRAY(isum8_32, int8_t, int32_t)   // Up to 16M elements of extreme values
+DEFINE_SUM_ARRAY(isum8_64, int8_t, int64_t)   // Maximum safety
+
+// 16-bit input sum functions
+DEFINE_SUM_ARRAY(isum16_32, int16_t, int32_t) // Up to 65537 elements of extreme values
+DEFINE_SUM_ARRAY(isum16_64, int16_t, int64_t) // Maximum safety
+
+// 32-bit input sum functions
+DEFINE_SUM_ARRAY(isum32_64, int32_t, int64_t) // Safe default (4+ billion elements)
+DEFINE_SUM_ARRAY(isum32_32, int32_t, int32_t) // Performance option (overflow possible, use with care)
+
+// 64-bit input sum function
+DEFINE_SUM_ARRAY(isum64_64, int64_t, int64_t) // Same size (no 128-bit available, overflow possible)
 
 // Generate 64-bit signed functions except sum (isum64 would overflow without 128-bit accumulator)
 DEFINE_MIN_ARRAY_SIGNED(64)
