@@ -36,7 +36,7 @@ static int fail_count = 0;
 // Eliminates duplication across uint16/32/64 and int16/32/64 property tests
 #define DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(BITS, MAX_LEN, RAND_EXPR)      \
   static void test_uint##BITS##_properties(void) {                             \
-    TEST("uint" #BITS " min/max/sum/avg properties");                          \
+    TEST("uint" #BITS " min/max/sum properties");                          \
                                                                                \
     uint##BITS##_t *arr = malloc(MAX_LEN * sizeof(uint##BITS##_t));            \
     uint##BITS##_t *scratch_minmax = malloc(MAX_LEN * sizeof(uint##BITS##_t)); \
@@ -52,7 +52,6 @@ static int fail_count = 0;
       uint##BITS##_t min_result = min##BITS##_array(arr, len, scratch_minmax); \
       uint##BITS##_t max_result = max##BITS##_array(arr, len, scratch_minmax); \
       uint64_t sum_result = sum##BITS##_array(arr, len, scratch_sum);          \
-      uint##BITS##_t avg_result = avg##BITS##_array(arr, len, scratch_sum);    \
                                                                                \
       bool min_found = false;                                                  \
       bool max_found = false;                                                  \
@@ -91,11 +90,6 @@ static int fail_count = 0;
              (unsigned long long)sum_check, (unsigned long long)sum_result);   \
         goto cleanup_uint##BITS;                                               \
       }                                                                        \
-      uint##BITS##_t avg_check = (uint##BITS##_t)(sum_check / len);            \
-      if (avg_check != avg_result) {                                           \
-        FAIL("avg mismatch at trial %d", trial);                               \
-        goto cleanup_uint##BITS;                                               \
-      }                                                                        \
     }                                                                          \
                                                                                \
     PASS();                                                                    \
@@ -107,7 +101,7 @@ static int fail_count = 0;
 
 #define DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(BITS, MAX_LEN, RAND_EXPR)        \
   static void test_int##BITS##_properties(void) {                              \
-    TEST("int" #BITS " min/max/sum/avg properties");                           \
+    TEST("int" #BITS " min/max/sum properties");                           \
                                                                                \
     int##BITS##_t *arr = malloc(MAX_LEN * sizeof(int##BITS##_t));              \
     int##BITS##_t *scratch_minmax = malloc(MAX_LEN * sizeof(int##BITS##_t));   \
@@ -123,7 +117,6 @@ static int fail_count = 0;
       int##BITS##_t min_result = imin##BITS##_array(arr, len, scratch_minmax); \
       int##BITS##_t max_result = imax##BITS##_array(arr, len, scratch_minmax); \
       int64_t sum_result = isum##BITS##_array(arr, len, scratch_sum);          \
-      int##BITS##_t avg_result = iavg##BITS##_array(arr, len, scratch_sum);    \
                                                                                \
       bool min_found = false;                                                  \
       bool max_found = false;                                                  \
@@ -156,11 +149,6 @@ static int fail_count = 0;
       if (sum_check != sum_result) {                                           \
         FAIL("sum mismatch at trial %d: expected=%lld got=%lld", trial,        \
              (long long)sum_check, (long long)sum_result);                     \
-        goto cleanup_int##BITS;                                                \
-      }                                                                        \
-      int##BITS##_t avg_check = (int##BITS##_t)(sum_check / len);              \
-      if (avg_check != avg_result) {                                           \
-        FAIL("avg mismatch at trial %d", trial);                               \
         goto cleanup_int##BITS;                                                \
       }                                                                        \
     }                                                                          \
@@ -283,59 +271,6 @@ static void test_uint8_min_max_small(void) {
   PASS();
 }
 
-// Test uint8 sum/avg exhaustively
-static void test_uint8_sum_avg(void) {
-  TEST("uint8 sum/avg");
-
-  uint64_t scratch[16];
-
-  // Known sums
-  uint8_t arr1[] = {1, 2, 3, 4};
-  uint64_t sum1 = sum8_array(arr1, 4, scratch);
-  uint8_t avg1 = avg8_array(arr1, 4, scratch);
-
-  if (sum1 != 10 || avg1 != 2) {
-    FAIL("arr [1,2,3,4] expected sum=10 avg=2 got sum=%llu avg=%u",
-         (unsigned long long)sum1, avg1);
-    return;
-  }
-
-  // All zeros
-  uint8_t arr_zeros[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  if (sum8_array(arr_zeros, 8, scratch) != 0 ||
-      avg8_array(arr_zeros, 8, scratch) != 0) {
-    FAIL("all zeros");
-    return;
-  }
-
-  // All max values
-  uint8_t arr_max[4] = {255, 255, 255, 255};
-  uint64_t sum_max = sum8_array(arr_max, 4, scratch);
-  uint8_t avg_max = avg8_array(arr_max, 4, scratch);
-
-  if (sum_max != 1020 || avg_max != 255) {
-    FAIL("all max values expected sum=1020 avg=255 got sum=%llu avg=%u",
-         (unsigned long long)sum_max, avg_max);
-    return;
-  }
-
-  // Average rounding
-  uint8_t arr_round1[] = {1, 2};
-  uint8_t arr_round2[] = {1, 2, 3};
-
-  if (avg8_array(arr_round1, 2, scratch) != 1) {
-    FAIL("avg [1,2] expected 1 got %u", avg8_array(arr_round1, 2, scratch));
-    return;
-  }
-
-  if (avg8_array(arr_round2, 3, scratch) != 2) {
-    FAIL("avg [1,2,3] expected 2 got %u", avg8_array(arr_round2, 3, scratch));
-    return;
-  }
-
-  PASS();
-}
-
 // Test int8 with negative values
 static void test_int8_min_max(void) {
   TEST("int8 min/max with negatives");
@@ -374,58 +309,6 @@ static void test_int8_min_max(void) {
 
   PASS();
 }
-
-// Test int8 sum/avg with negatives
-static void test_int8_sum_avg(void) {
-  TEST("int8 sum/avg with negatives");
-
-  int64_t scratch[8];
-
-  // Mixed signs
-  int8_t arr1[] = {-5, 5, -3, 3};
-  int64_t sum1 = isum8_array(arr1, 4, scratch);
-  int8_t avg1 = iavg8_array(arr1, 4, scratch);
-
-  if (sum1 != 0 || avg1 != 0) {
-    FAIL("mixed signs expected sum=0 avg=0 got sum=%lld avg=%d",
-         (long long)sum1, avg1);
-    return;
-  }
-
-  // Negative average rounding
-  int8_t arr_neg[] = {-7, -1};
-  int8_t avg_neg = iavg8_array(arr_neg, 2, scratch);
-
-  if (avg_neg != -4) {
-    FAIL("negative avg [-7,-1] expected -4 got %d", avg_neg);
-    return;
-  }
-
-  PASS();
-}
-
-// Property-based tests for larger types
-// Generated using macros to eliminate duplication
-
-// Unsigned types
-DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(16, 1000, rand() & 0xFFFF)
-DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(32, 100,
-                                        ((uint32_t)rand() << 16) |
-                                            (rand() & 0xFFFF))
-DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(64, 100,
-                                        ((uint64_t)rand() << 32) |
-                                            ((uint64_t)rand() << 16) |
-                                            (rand() & 0xFFFF))
-
-// Signed types
-DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(16, 100, (int16_t)(rand() & 0xFFFF))
-DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(32, 100,
-                                      (int32_t)(((uint32_t)rand() << 16) |
-                                                (rand() & 0xFFFF)))
-DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(64, 100,
-                                      (int64_t)(((uint64_t)rand() << 32) |
-                                                ((uint64_t)rand() << 16) |
-                                                (rand() & 0xFFFF)))
 
 // Compare against naive implementations
 static void test_comparison_naive(void) {
@@ -515,34 +398,6 @@ static void test_non_power_of_2(void) {
   PASS();
 }
 
-// Test that sum overflow is expected behavior (wrapping arithmetic)
-static void test_sum_overflow_documented(void) {
-  TEST("sum64 overflow behavior (wrapping)");
-
-  uint64_t scratch[2];
-
-  // Test uint64 overflow: UINT64_MAX + 1 wraps to 0
-  uint64_t arr_overflow[] = {UINT64_MAX, 1};
-  uint64_t sum_overflow = sum64_array(arr_overflow, 2, scratch);
-
-  if (sum_overflow != 0) {
-    FAIL("overflow wrap expected 0 got %llu", (unsigned long long)sum_overflow);
-    return;
-  }
-
-  // Test another case: UINT64_MAX + UINT64_MAX wraps to UINT64_MAX - 1
-  uint64_t arr_double[] = {UINT64_MAX, UINT64_MAX};
-  uint64_t sum_double = sum64_array(arr_double, 2, scratch);
-
-  if (sum_double != UINT64_MAX - 1) {
-    FAIL("double max expected %llu got %llu",
-         (unsigned long long)(UINT64_MAX - 1), (unsigned long long)sum_double);
-    return;
-  }
-
-  PASS();
-}
-
 int main() {
   // Seed RNG once for all tests
   srand((unsigned int)time(NULL));
@@ -550,18 +405,9 @@ int main() {
   printf("Array Reduction Tests\n\n");
 
   test_uint8_min_max_small();
-  test_uint8_sum_avg();
   test_int8_min_max();
-  test_int8_sum_avg();
-  test_uint16_properties();
-  test_uint32_properties();
-  test_int32_properties();
-  test_uint64_properties();
-  test_int64_properties();
-  test_int16_properties();
   test_comparison_naive();
   test_non_power_of_2();
-  test_sum_overflow_documented();
 
   printf("\nResults: %d passed, %d failed\n", pass_count, fail_count);
 

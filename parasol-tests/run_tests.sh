@@ -69,17 +69,20 @@ for test_file in "${TEST_FILES[@]}"; do
     fi
 done
 
-# Validate that parasol.h itself compiles for parasol target
+# Validate that all parasol.h functions compile for parasol target
+# This forces instantiation of all functions, preventing -O2 from optimizing
+# them away and hiding compilation errors
 PARASOL_CLANG="../build/bin/clang"
 if [ -f "$PARASOL_CLANG" ]; then
     echo -e "${BLUE}Validating parasol.h with Parasol Target${NC}\n"
-    echo -e "${YELLOW}Checking parasol.h compiles for parasol target...${NC}"
+    echo -e "${YELLOW}Compiling all parasol.h functions for parasol target...${NC}"
 
-    if $PARASOL_CLANG -target parasol -O2 -c ../clang/lib/Headers/parasol.h -o /tmp/parasol_h_test.o 2>&1; then
-        echo -e "${GREEN}PASS: parasol.h compiles for parasol target${NC}\n"
-        rm -f /tmp/parasol_h_test.o
+    if $PARASOL_CLANG -target parasol -O2 -c test_parasol_compilation.c -o /tmp/parasol_compilation_test.o 2>&1; then
+        echo -e "${GREEN}PASS: All parasol.h functions compile for parasol target${NC}\n"
+        rm -f /tmp/parasol_compilation_test.o
     else
-        echo -e "${RED}FAIL: parasol.h does not compile for parasol target${NC}\n"
+        echo -e "${RED}FAIL: Some parasol.h functions do not compile for parasol target${NC}\n"
+        echo -e "${RED}See errors above for details on which functions failed${NC}\n"
         overall_status=1
     fi
 else
