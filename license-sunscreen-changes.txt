@@ -18,6 +18,9 @@ compile.sh
 run-all.sh
 run.sh
 package-release.sh
+release-all.sh
+publish-release.sh
+Dockerfile.release
 flake.nix
 flake.lock
 default.nix
