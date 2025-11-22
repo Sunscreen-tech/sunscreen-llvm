@@ -1,0 +1,17 @@
+# Test executables
+test_utilities
+test_cswap
+test_avg
+test_array_reductions
+test_array_sort
+
+# Object files
+*.o
+
+# Assembly files
+*.s
+*.S
+
+# LLVM intermediate representations
+*.bc
+*.ll

@@ -1,0 +1,45 @@
+# Modified by Sunscreen under the AGPLv3 license; see the README at the
+# repository root for more information
+
+# Multi-architecture LLVM build container for release packaging
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    ninja-build \
+    python3 \
+    git \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up work directory
+WORKDIR /build
+
+# Copy source tarball (created via git archive by host script)
+COPY sunscreen-llvm-source.tar.gz /build/
+
+# Extract source and change into directory
+RUN tar -xzf sunscreen-llvm-source.tar.gz && \
+    rm sunscreen-llvm-source.tar.gz
+
+# Change to extracted directory
+WORKDIR /build/sunscreen-llvm
+
+# Build LLVM in Release mode
+RUN ./compile-llvm.sh all Release
+
+# Create release package
+RUN ./package-release.sh
+
+# Copy tarball to output directory
+# The release-all.sh script will mount /output as a volume
+RUN mkdir -p /output && \
+    mv parasol-compiler-*.tar.gz /output/
+
+# Default command: list what we built
+CMD ["ls", "-lh", "/output/"]
