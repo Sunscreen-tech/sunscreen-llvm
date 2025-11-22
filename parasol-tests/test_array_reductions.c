@@ -34,13 +34,13 @@ static int fail_count = 0;
 
 // Macro-based property test generation for array reductions
 // Eliminates duplication across uint16/32/64 and int16/32/64 property tests
-#define DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(BITS, MAX_LEN, RAND_EXPR)      \
+#define DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(BITS, SUM_FUNC, SUM_TYPE, MAX_LEN, RAND_EXPR) \
   static void test_uint##BITS##_properties(void) {                             \
     TEST("uint" #BITS " min/max/sum properties");                          \
                                                                                \
     uint##BITS##_t *arr = malloc(MAX_LEN * sizeof(uint##BITS##_t));            \
     uint##BITS##_t *scratch_minmax = malloc(MAX_LEN * sizeof(uint##BITS##_t)); \
-    uint64_t *scratch_sum = malloc(MAX_LEN * sizeof(uint64_t));                \
+    SUM_TYPE *scratch_sum = malloc(MAX_LEN * sizeof(SUM_TYPE));                \
                                                                                \
     for (int trial = 0; trial < PROPERTY_TEST_TRIALS; trial++) {               \
       uint16_t len = 1 + (rand() % MAX_LEN);                                   \
@@ -51,11 +51,11 @@ static int fail_count = 0;
                                                                                \
       uint##BITS##_t min_result = min##BITS##_array(arr, len, scratch_minmax); \
       uint##BITS##_t max_result = max##BITS##_array(arr, len, scratch_minmax); \
-      uint64_t sum_result = sum##BITS##_array(arr, len, scratch_sum);          \
+      SUM_TYPE sum_result = SUM_FUNC##_array(arr, len, scratch_sum);           \
                                                                                \
       bool min_found = false;                                                  \
       bool max_found = false;                                                  \
-      uint64_t sum_check = 0;                                                  \
+      SUM_TYPE sum_check = 0;                                                  \
                                                                                \
       for (uint16_t i = 0; i < len; i++) {                                     \
         if (arr[i] < min_result) {                                             \
@@ -99,13 +99,13 @@ static int fail_count = 0;
     free(scratch_sum);                                                         \
   }
 
-#define DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(BITS, MAX_LEN, RAND_EXPR)        \
+#define DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(BITS, SUM_FUNC, SUM_TYPE, MAX_LEN, RAND_EXPR) \
   static void test_int##BITS##_properties(void) {                              \
     TEST("int" #BITS " min/max/sum properties");                           \
                                                                                \
     int##BITS##_t *arr = malloc(MAX_LEN * sizeof(int##BITS##_t));              \
     int##BITS##_t *scratch_minmax = malloc(MAX_LEN * sizeof(int##BITS##_t));   \
-    int64_t *scratch_sum = malloc(MAX_LEN * sizeof(int64_t));                  \
+    SUM_TYPE *scratch_sum = malloc(MAX_LEN * sizeof(SUM_TYPE));                \
                                                                                \
     for (int trial = 0; trial < PROPERTY_TEST_TRIALS; trial++) {               \
       uint16_t len = 1 + (rand() % MAX_LEN);                                   \
@@ -116,11 +116,11 @@ static int fail_count = 0;
                                                                                \
       int##BITS##_t min_result = imin##BITS##_array(arr, len, scratch_minmax); \
       int##BITS##_t max_result = imax##BITS##_array(arr, len, scratch_minmax); \
-      int64_t sum_result = isum##BITS##_array(arr, len, scratch_sum);          \
+      SUM_TYPE sum_result = SUM_FUNC##_array(arr, len, scratch_sum);           \
                                                                                \
       bool min_found = false;                                                  \
       bool max_found = false;                                                  \
-      int64_t sum_check = 0;                                                   \
+      SUM_TYPE sum_check = 0;                                                  \
                                                                                \
       for (uint16_t i = 0; i < len; i++) {                                     \
         if (arr[i] < min_result) {                                             \
@@ -160,6 +160,15 @@ static int fail_count = 0;
     free(scratch_sum);                                                         \
   }
 
+// Instantiate property tests for different bit widths
+DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(8, sum8_32, uint32_t, 1000, (uint8_t)(rand() % 256))
+DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(16, sum16_32, uint32_t, 500, (uint16_t)rand())
+DEFINE_UNSIGNED_REDUCTION_PROPERTY_TEST(32, sum32_64, uint64_t, 500, (uint32_t)rand())
+
+DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(8, isum8_32, int32_t, 1000, (int8_t)((rand() % 256) - 128))
+DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(16, isum16_32, int32_t, 500, (int16_t)(rand() - (RAND_MAX/2)))
+DEFINE_SIGNED_REDUCTION_PROPERTY_TEST(32, isum32_64, int64_t, 500, (int32_t)(rand() - (RAND_MAX/2)))
+
 // Reference implementations for comparison
 static uint8_t min_naive_uint8(const uint8_t *arr, uint16_t len) {
   uint8_t result = arr[0];
@@ -179,8 +188,8 @@ static uint8_t max_naive_uint8(const uint8_t *arr, uint16_t len) {
   return result;
 }
 
-static uint64_t sum_naive_uint8(const uint8_t *arr, uint16_t len) {
-  uint64_t result = 0;
+static uint32_t sum_naive_uint8(const uint8_t *arr, uint16_t len) {
+  uint32_t result = 0;
   for (uint16_t i = 0; i < len; i++) {
     result += arr[i];
   }
@@ -205,8 +214,8 @@ static int8_t max_naive_int8(const int8_t *arr, uint16_t len) {
   return result;
 }
 
-static int64_t sum_naive_int8(const int8_t *arr, uint16_t len) {
-  int64_t result = 0;
+static int32_t sum_naive_int8(const int8_t *arr, uint16_t len) {
+  int32_t result = 0;
   for (uint16_t i = 0; i < len; i++) {
     result += arr[i];
   }
@@ -316,36 +325,36 @@ static void test_comparison_naive(void) {
 
   uint8_t arr[] = {42, 17, 99, 3, 85, 61, 28};
   uint8_t scratch[7];
-  uint64_t scratch_sum[7];
+  uint32_t scratch_sum[7];
 
   uint8_t min_result = min8_array(arr, 7, scratch);
   uint8_t max_result = max8_array(arr, 7, scratch);
-  uint64_t sum_result = sum8_array(arr, 7, scratch_sum);
+  uint32_t sum_result = sum8_32_array(arr, 7, scratch_sum);
 
   uint8_t min_expected = min_naive_uint8(arr, 7);
   uint8_t max_expected = max_naive_uint8(arr, 7);
-  uint64_t sum_expected = sum_naive_uint8(arr, 7);
+  uint32_t sum_expected = sum_naive_uint8(arr, 7);
 
   if (min_result != min_expected || max_result != max_expected ||
       sum_result != sum_expected) {
-    FAIL("mismatch with naive: min %u!=%u max %u!=%u sum %llu!=%llu",
+    FAIL("mismatch with naive: min %u!=%u max %u!=%u sum %u!=%u",
          min_result, min_expected, max_result, max_expected,
-         (unsigned long long)sum_result, (unsigned long long)sum_expected);
+         sum_result, sum_expected);
     return;
   }
 
   // Test int8
   int8_t arr_signed[] = {-42, 17, -99, 3, 85, -61, 28};
   int8_t scratch_signed[7];
-  int64_t scratch_sum_signed[7];
+  int32_t scratch_sum_signed[7];
 
   int8_t min_signed = imin8_array(arr_signed, 7, scratch_signed);
   int8_t max_signed = imax8_array(arr_signed, 7, scratch_signed);
-  int64_t sum_signed = isum8_array(arr_signed, 7, scratch_sum_signed);
+  int32_t sum_signed = isum8_32_array(arr_signed, 7, scratch_sum_signed);
 
   int8_t min_signed_expected = min_naive_int8(arr_signed, 7);
   int8_t max_signed_expected = max_naive_int8(arr_signed, 7);
-  int64_t sum_signed_expected = sum_naive_int8(arr_signed, 7);
+  int32_t sum_signed_expected = sum_naive_int8(arr_signed, 7);
 
   if (min_signed != min_signed_expected || max_signed != max_signed_expected ||
       sum_signed != sum_signed_expected) {
@@ -366,7 +375,7 @@ static void test_non_power_of_2(void) {
     uint16_t len = sizes[s];
     uint8_t *arr = malloc(len * sizeof(uint8_t));
     uint8_t *scratch = malloc(len * sizeof(uint8_t));
-    uint64_t *scratch_sum = malloc(len * sizeof(uint64_t));
+    uint32_t *scratch_sum = malloc(len * sizeof(uint32_t));
 
     // Sequential values
     for (uint16_t i = 0; i < len; i++) {
@@ -375,11 +384,11 @@ static void test_non_power_of_2(void) {
 
     uint8_t min_result = min8_array(arr, len, scratch);
     uint8_t max_result = max8_array(arr, len, scratch);
-    uint64_t sum_result = sum8_array(arr, len, scratch_sum);
+    uint32_t sum_result = sum8_32_array(arr, len, scratch_sum);
 
     uint8_t min_expected = min_naive_uint8(arr, len);
     uint8_t max_expected = max_naive_uint8(arr, len);
-    uint64_t sum_expected = sum_naive_uint8(arr, len);
+    uint32_t sum_expected = sum_naive_uint8(arr, len);
 
     if (min_result != min_expected || max_result != max_expected ||
         sum_result != sum_expected) {
@@ -408,6 +417,14 @@ int main() {
   test_int8_min_max();
   test_comparison_naive();
   test_non_power_of_2();
+
+  printf("\nProperty-Based Tests\n");
+  test_uint8_properties();
+  test_uint16_properties();
+  test_uint32_properties();
+  test_int8_properties();
+  test_int16_properties();
+  test_int32_properties();
 
   printf("\nResults: %d passed, %d failed\n", pass_count, fail_count);
 

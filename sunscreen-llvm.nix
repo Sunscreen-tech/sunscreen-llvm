@@ -16,17 +16,17 @@ in stdenv.mkDerivation rec {
   src = if stdenv.isDarwin then
     fetchurl {
       url = "${urlBase}/parasol-compiler-macos-aarch64-${fileVersion}.tar.gz";
-      sha256 = "15bskb9y7chwsxyc60rknkg8fg7zpqar3shhg98v4fhn7c153bn5";
+      sha256 = "0i68wmn0xa9q946yn116bzg3522gnf59i53kcr42yqmc9lyrvpn3";
     }
   else if stdenv.isLinux && stdenv.isAarch64 then
     fetchurl {
       url = "${urlBase}/parasol-compiler-linux-aarch64-${fileVersion}.tar.gz";
-      sha256 = "0illxpr115jih1fsd8sfxg67231bbjygfwnyr3srvypppywlyy6d";
+      sha256 = "11sg7ljrp34skizbjr6jp7jy1v08m0bk0353j1sq4dnifrwsgpyv";
     }
   else if stdenv.isLinux && stdenv.isx86_64 then
     fetchurl {
       url = "${urlBase}/parasol-compiler-linux-x86-64-${fileVersion}.tar.gz";
-      sha256 = "1bqkjra0czp9111idnwqpd1mj218gihh2wqisbrfwfl2pqn7c7wi";
+      sha256 = "1wc8h33c21i397sy54j38k1vgcp3jvan0mlj5dgbcgdsdirwgfmy";
     }
   else
     throw "Unsupported platform: ${stdenv.system}";

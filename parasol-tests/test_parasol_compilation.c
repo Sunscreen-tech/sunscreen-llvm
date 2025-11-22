@@ -72,12 +72,24 @@ void *max_array_functions[] = {
 };
 
 void *sum_array_functions[] = {
-    (void *)sum8_array,
-    (void *)sum16_array,
-    (void *)sum32_array,
-    (void *)isum8_array,
-    (void *)isum16_array,
-    (void *)isum32_array,
+    // Unsigned sum functions with various accumulator sizes
+    (void *)sum8_16_array,
+    (void *)sum8_32_array,
+    (void *)sum8_64_array,
+    (void *)sum16_32_array,
+    (void *)sum16_64_array,
+    (void *)sum32_64_array,
+    (void *)sum32_32_array,
+    (void *)sum64_64_array,
+    // Signed sum functions with various accumulator sizes
+    (void *)isum8_16_array,
+    (void *)isum8_32_array,
+    (void *)isum8_64_array,
+    (void *)isum16_32_array,
+    (void *)isum16_64_array,
+    (void *)isum32_64_array,
+    (void *)isum32_32_array,
+    (void *)isum64_64_array,
 };
 
 void *compare_swap_functions[] = {
