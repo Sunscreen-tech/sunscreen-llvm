@@ -4,7 +4,7 @@
 { lib, stdenv, fetchurl, autoPatchelfHook, zlib }:
 
 let
-  version = "2025.09.30";
+  version = "2025.11.21";
   fileVersion = builtins.replaceStrings [ "." ] [ "-" ] version;
   urlBase =
     "https://github.com/Sunscreen-tech/sunscreen-llvm/releases/download/v${version}";
@@ -16,17 +16,17 @@ in stdenv.mkDerivation rec {
   src = if stdenv.isDarwin then
     fetchurl {
       url = "${urlBase}/parasol-compiler-macos-aarch64-${fileVersion}.tar.gz";
-      sha256 = "0ra93mji3j9km7ia21gsqswn49a3abwc1ml1xq643hzq4xigyqjd";
+      sha256 = "1b6glxw6k2gcvj5rp3jixqv2wmkfc8cl9f3jixd2510fzlvyiwqy";
     }
   else if stdenv.isLinux && stdenv.isAarch64 then
     fetchurl {
       url = "${urlBase}/parasol-compiler-linux-aarch64-${fileVersion}.tar.gz";
-      sha256 = "197fybbjvimnyqwwn3q7s9yrljbqp57s42n9znpckmnbcbp8p373";
+      sha256 = "1jshiqx6klclm3myw93ly45hwir9ksxjg8rc2nfc8kc3zn9vp075";
     }
   else if stdenv.isLinux && stdenv.isx86_64 then
     fetchurl {
       url = "${urlBase}/parasol-compiler-linux-x86-64-${fileVersion}.tar.gz";
-      sha256 = "1p0418nqzs6a2smrbqiyrxj34pimm6qzj7k29l4ys226cz6kfz2r";
+      sha256 = "1dd2z575zszy00qksjpgy0fgrdvsxrhi08y24f5ibyjl4lzgwd7z";
     }
   else
     throw "Unsupported platform: ${stdenv.system}";
