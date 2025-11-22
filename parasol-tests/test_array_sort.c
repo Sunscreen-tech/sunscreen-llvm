@@ -261,7 +261,7 @@ static void test_uint8_sort_asc(void) {
   // Already sorted
   uint8_t arr1[] = {1, 2, 3, 4};
   uint8_t original1[] = {1, 2, 3, 4};
-  bitonic_sort_uint8_asc(arr1, 4);
+  sort_uint8_asc(arr1, 4);
 
   if (!is_sorted_asc_uint8(arr1, 4) ||
       !is_permutation_uint8(arr1, original1, 4)) {
@@ -272,7 +272,7 @@ static void test_uint8_sort_asc(void) {
   // Reverse sorted
   uint8_t arr2[] = {4, 3, 2, 1};
   uint8_t original2[] = {4, 3, 2, 1};
-  bitonic_sort_uint8_asc(arr2, 4);
+  sort_uint8_asc(arr2, 4);
 
   if (!is_sorted_asc_uint8(arr2, 4) ||
       !is_permutation_uint8(arr2, original2, 4)) {
@@ -283,7 +283,7 @@ static void test_uint8_sort_asc(void) {
   // Random order
   uint8_t arr3[] = {42, 17, 99, 3, 85, 61, 28, 156};
   uint8_t original3[] = {42, 17, 99, 3, 85, 61, 28, 156};
-  bitonic_sort_uint8_asc(arr3, 8);
+  sort_uint8_asc(arr3, 8);
 
   if (!is_sorted_asc_uint8(arr3, 8) ||
       !is_permutation_uint8(arr3, original3, 8)) {
@@ -294,7 +294,7 @@ static void test_uint8_sort_asc(void) {
   // All same value
   uint8_t arr4[] = {42, 42, 42, 42};
   uint8_t original4[] = {42, 42, 42, 42};
-  bitonic_sort_uint8_asc(arr4, 4);
+  sort_uint8_asc(arr4, 4);
 
   if (!is_sorted_asc_uint8(arr4, 4) ||
       !is_permutation_uint8(arr4, original4, 4)) {
@@ -305,7 +305,7 @@ static void test_uint8_sort_asc(void) {
   // Edge values
   uint8_t arr5[] = {255, 0, 128, 1, 254, 2, 127, 129};
   uint8_t original5[] = {255, 0, 128, 1, 254, 2, 127, 129};
-  bitonic_sort_uint8_asc(arr5, 8);
+  sort_uint8_asc(arr5, 8);
 
   if (!is_sorted_asc_uint8(arr5, 8) ||
       !is_permutation_uint8(arr5, original5, 8)) {
@@ -316,7 +316,7 @@ static void test_uint8_sort_asc(void) {
   // Size 2
   uint8_t arr6[] = {100, 50};
   uint8_t original6[] = {100, 50};
-  bitonic_sort_uint8_asc(arr6, 2);
+  sort_uint8_asc(arr6, 2);
 
   if (!is_sorted_asc_uint8(arr6, 2) ||
       !is_permutation_uint8(arr6, original6, 2)) {
@@ -327,7 +327,7 @@ static void test_uint8_sort_asc(void) {
   // Size 16
   uint8_t arr7[] = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
   uint8_t original7[] = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
-  bitonic_sort_uint8_asc(arr7, 16);
+  sort_uint8_asc(arr7, 16);
 
   if (!is_sorted_asc_uint8(arr7, 16) ||
       !is_permutation_uint8(arr7, original7, 16)) {
@@ -345,7 +345,7 @@ static void test_uint8_sort_desc(void) {
   // Already sorted descending
   uint8_t arr1[] = {4, 3, 2, 1};
   uint8_t original1[] = {4, 3, 2, 1};
-  bitonic_sort_uint8_desc(arr1, 4);
+  sort_uint8_desc(arr1, 4);
 
   if (!is_sorted_desc_uint8(arr1, 4) ||
       !is_permutation_uint8(arr1, original1, 4)) {
@@ -356,7 +356,7 @@ static void test_uint8_sort_desc(void) {
   // Sorted ascending
   uint8_t arr2[] = {1, 2, 3, 4};
   uint8_t original2[] = {1, 2, 3, 4};
-  bitonic_sort_uint8_desc(arr2, 4);
+  sort_uint8_desc(arr2, 4);
 
   if (!is_sorted_desc_uint8(arr2, 4) ||
       !is_permutation_uint8(arr2, original2, 4)) {
@@ -367,7 +367,7 @@ static void test_uint8_sort_desc(void) {
   // Random order
   uint8_t arr3[] = {42, 17, 99, 3, 85, 61, 28, 156};
   uint8_t original3[] = {42, 17, 99, 3, 85, 61, 28, 156};
-  bitonic_sort_uint8_desc(arr3, 8);
+  sort_uint8_desc(arr3, 8);
 
   if (!is_sorted_desc_uint8(arr3, 8) ||
       !is_permutation_uint8(arr3, original3, 8)) {
@@ -385,7 +385,7 @@ static void test_int8_sort(void) {
   // Mix of positive and negative
   int8_t arr1[] = {-50, 30, -100, 75};
   int8_t original1[] = {-50, 30, -100, 75};
-  bitonic_sort_int8_asc(arr1, 4);
+  sort_int8_asc(arr1, 4);
 
   if (!is_sorted_asc_int8(arr1, 4) ||
       !is_permutation_int8(arr1, original1, 4)) {
@@ -396,7 +396,7 @@ static void test_int8_sort(void) {
   // All negative
   int8_t arr2[] = {-1, -5, -3, -10};
   int8_t original2[] = {-1, -5, -3, -10};
-  bitonic_sort_int8_asc(arr2, 4);
+  sort_int8_asc(arr2, 4);
 
   if (!is_sorted_asc_int8(arr2, 4) ||
       !is_permutation_int8(arr2, original2, 4)) {
@@ -407,7 +407,7 @@ static void test_int8_sort(void) {
   // Edge values
   int8_t arr3[] = {INT8_MIN, INT8_MAX, 0, -1, 1, -2, 2, -3};
   int8_t original3[] = {INT8_MIN, INT8_MAX, 0, -1, 1, -2, 2, -3};
-  bitonic_sort_int8_asc(arr3, 8);
+  sort_int8_asc(arr3, 8);
 
   if (!is_sorted_asc_int8(arr3, 8) ||
       !is_permutation_int8(arr3, original3, 8)) {
@@ -418,7 +418,7 @@ static void test_int8_sort(void) {
   // Descending
   int8_t arr4[] = {-50, 30, -100, 75};
   int8_t original4[] = {-50, 30, -100, 75};
-  bitonic_sort_int8_desc(arr4, 4);
+  sort_int8_desc(arr4, 4);
 
   if (!is_sorted_desc_int8(arr4, 4) ||
       !is_permutation_int8(arr4, original4, 4)) {
@@ -447,7 +447,7 @@ static void test_uint16_sort_properties(void) {
     }
 
     // Test ascending
-    bitonic_sort_uint16_asc(arr, len);
+    sort_uint16_asc(arr, len);
 
     // Check sorted
     for (uint16_t i = 0; i < len - 1; i++) {
@@ -491,7 +491,7 @@ static void test_uint32_sort_properties(void) {
     }
 
     // Test descending
-    bitonic_sort_uint32_desc(arr, len);
+    sort_uint32_desc(arr, len);
 
     // Check sorted descending
     for (uint16_t i = 0; i < len - 1; i++) {
@@ -535,7 +535,7 @@ static void test_int32_sort_properties(void) {
     }
 
     // Test ascending
-    bitonic_sort_int32_asc(arr, len);
+    sort_int32_asc(arr, len);
 
     // Check sorted ascending
     for (uint16_t i = 0; i < len - 1; i++) {
@@ -580,7 +580,7 @@ static void test_int16_sort_properties(void) {
     }
 
     // Test ascending
-    bitonic_sort_int16_asc(arr, len);
+    sort_int16_asc(arr, len);
 
     // Check sorted ascending
     for (uint16_t i = 0; i < len - 1; i++) {
@@ -626,7 +626,7 @@ static void test_uint64_sort_properties(void) {
     }
 
     // Test ascending
-    bitonic_sort_uint64_asc(arr, len);
+    sort_uint64_asc(arr, len);
 
     // Check sorted ascending
     for (uint16_t i = 0; i < len - 1; i++) {
@@ -671,7 +671,7 @@ static void test_int64_sort_properties(void) {
     }
 
     // Test descending
-    bitonic_sort_int64_desc(arr, len);
+    sort_int64_desc(arr, len);
 
     // Check sorted descending
     for (uint16_t i = 0; i < len - 1; i++) {
@@ -705,7 +705,7 @@ static void test_duplicates(void) {
   // Many duplicates
   uint8_t arr1[] = {5, 2, 5, 2, 5, 2, 5, 2};
   uint8_t original1[] = {5, 2, 5, 2, 5, 2, 5, 2};
-  bitonic_sort_uint8_asc(arr1, 8);
+  sort_uint8_asc(arr1, 8);
 
   if (!is_sorted_asc_uint8(arr1, 8) ||
       !is_permutation_uint8(arr1, original1, 8)) {
@@ -756,7 +756,7 @@ static void test_comparison_qsort(void) {
       arr_qsort[i] = val;
     }
 
-    bitonic_sort_uint8_asc(arr_bitonic, 16);
+    sort_uint8_asc(arr_bitonic, 16);
     qsort(arr_qsort, 16, sizeof(uint8_t), cmp_uint8_asc);
 
     for (int i = 0; i < 16; i++) {
@@ -774,7 +774,7 @@ static void test_comparison_qsort(void) {
       arr_qsort[i] = val;
     }
 
-    bitonic_sort_uint8_desc(arr_bitonic, 16);
+    sort_uint8_desc(arr_bitonic, 16);
     qsort(arr_qsort, 16, sizeof(uint8_t), cmp_uint8_desc);
 
     for (int i = 0; i < 16; i++) {

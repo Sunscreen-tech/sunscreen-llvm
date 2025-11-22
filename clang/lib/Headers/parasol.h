@@ -70,10 +70,10 @@ DEFINE_SELECT(32)
 DEFINE_SELECT(64)
 
 // Absolute value functions (signed)
+// Note: abs64 omitted - requires 64-bit shift operation (>> 63) not supported by parasol target
 #define abs8(x) iselect8((x) < 0, -(x), (x))
 #define abs16(x) iselect16((x) < 0, -(x), (x))
 #define abs32(x) iselect32((x) < 0, -(x), (x))
-#define abs64(x) iselect64((x) < 0, -(x), (x))
 
 // Integer square root macro for defining sqrt functions
 // Uses digit-by-digit binary algorithm building result from MSB to LSB
@@ -134,10 +134,10 @@ DEFINE_SQRT(sqrt32, uint32_t, uint16_t, 32768, select16)
 #define iclamp64(x, min_val, max_val) imin64(imax64((x), (min_val)), (max_val))
 
 // Sign functions - Returns -1, 0, or 1 based on sign
+// Note: sign64 omitted - generates 64-bit constant (-1) not supported by parasol target
 #define sign8(x) iselect8((x) < 0, -1, iselect8((x) > 0, 1, 0))
 #define sign16(x) iselect16((x) < 0, -1, iselect16((x) > 0, 1, 0))
 #define sign32(x) iselect32((x) < 0, -1, iselect32((x) > 0, 1, 0))
-#define sign64(x) iselect64((x) < 0, -1, iselect64((x) > 0, 1, 0))
 
 // Conditional swap - Swaps values if condition is true
 #define cswap8(cond, a, b)                                                     \
@@ -206,10 +206,10 @@ DEFINE_SQRT(sqrt32, uint32_t, uint16_t, 32768, select16)
   } while (0)
 
 // Average/midpoint functions (unsigned) - Avoids overflow
+// Note: avg64 omitted - requires 64-bit shift operation (>> 1) not supported by parasol target
 #define avg8(a, b) ((uint8_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
 #define avg16(a, b) ((uint16_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
 #define avg32(a, b) ((uint32_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
-#define avg64(a, b) ((uint64_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
 
 // Absolute difference (unsigned result, branchless)
 #define absdiff8(a, b) select8((a) > (b), (a) - (b), (b) - (a))
@@ -217,23 +217,20 @@ DEFINE_SQRT(sqrt32, uint32_t, uint16_t, 32768, select16)
 #define absdiff32(a, b) select32((a) > (b), (a) - (b), (b) - (a))
 #define absdiff64(a, b) select64((a) > (b), (a) - (b), (b) - (a))
 
+// Note: iabsdiff64 omitted - generates 64-bit shift (>> 63) during optimization, not supported by parasol target
 #define iabsdiff8(a, b) ((uint8_t)iselect8((a) > (b), (a) - (b), (b) - (a)))
 #define iabsdiff16(a, b) ((uint16_t)iselect16((a) > (b), (a) - (b), (b) - (a)))
 #define iabsdiff32(a, b) ((uint32_t)iselect32((a) > (b), (a) - (b), (b) - (a)))
-#define iabsdiff64(a, b) ((uint64_t)iselect64((a) > (b), (a) - (b), (b) - (a)))
 
 // Saturating arithmetic (clamps instead of wrapping on overflow/underflow)
+// Note: sadd64, ssub64 omitted - require 64-bit constants not supported by parasol target
 #define sadd8(a, b) select8((a) > (uint8_t)(255U - (b)), 255, (a) + (b))
 #define sadd16(a, b) select16((a) > (uint16_t)(65535U - (b)), 65535, (a) + (b))
 #define sadd32(a, b) select32((a) > (4294967295U - (b)), 4294967295U, (a) + (b))
-#define sadd64(a, b)                                                           \
-  select64((a) > (18446744073709551615ULL - (b)), 18446744073709551615ULL,     \
-           (a) + (b))
 
 #define ssub8(a, b) select8((a) < (b), 0, (a) - (b))
 #define ssub16(a, b) select16((a) < (b), 0, (a) - (b))
 #define ssub32(a, b) select32((a) < (b), 0, (a) - (b))
-#define ssub64(a, b) select64((a) < (b), 0, (a) - (b))
 
 // Signed saturating arithmetic (clamps to INT_MIN/INT_MAX)
 #define DEFINE_ISADD(SUFFIX, TYPE, UTYPE, SELECT_FUNC, MIN_VAL, MAX_VAL)       \
@@ -292,22 +289,17 @@ DEFINE_POW(i32, int32_t, iselect32)
 DEFINE_POW(i64, int64_t, iselect64)
 
 // Parity and utility bit checks
+// Note: is_even64, is_odd64 omitted - require 64-bit constant (1) not supported by parasol target
 #define is_even8(x) (((x) & 1) == 0)
 #define is_even16(x) (((x) & 1) == 0)
 #define is_even32(x) (((x) & 1) == 0)
-#define is_even64(x) (((x) & 1) == 0)
 
 #define is_odd8(x) (((x) & 1) == 1)
 #define is_odd16(x) (((x) & 1) == 1)
 #define is_odd32(x) (((x) & 1) == 1)
-#define is_odd64(x) (((x) & 1) == 1)
-
-#define is_power_of_2_8(x) (((x) != 0) && (((x) & ((x) - 1)) == 0))
-#define is_power_of_2_16(x) (((x) != 0) && (((x) & ((x) - 1)) == 0))
-#define is_power_of_2_32(x) (((x) != 0) && (((x) & ((x) - 1)) == 0))
-#define is_power_of_2_64(x) (((x) != 0) && (((x) & ((x) - 1)) == 0))
 
 // Bit extraction (returns the nth bit as a boolean)
+// Note: get_bit64 omitted - requires 64-bit shift operation not supported by parasol target
 static inline bool get_bit8(uint8_t value, unsigned int n) {
   return ((value >> n) & 0x1);
 }
@@ -317,10 +309,6 @@ static inline bool get_bit16(uint16_t value, unsigned int n) {
 }
 
 static inline bool get_bit32(uint32_t value, unsigned int n) {
-  return ((value >> n) & 0x1);
-}
-
-static inline bool get_bit64(uint64_t value, unsigned int n) {
   return ((value >> n) & 0x1);
 }
 
@@ -406,14 +394,6 @@ static inline bool get_bit64(uint64_t value, unsigned int n) {
     return scratch[0];                                                         \
   }
 
-// Average computed from sum - truncates toward zero
-#define DEFINE_AVG_ARRAY(SUFFIX, INPUT_TYPE, SUM_TYPE)                         \
-  static inline INPUT_TYPE avg##SUFFIX##_array(                                \
-      const INPUT_TYPE *arr, uint16_t len, SUM_TYPE *scratch) {                \
-    SUM_TYPE total = sum##SUFFIX##_array(arr, len, scratch);                   \
-    return (INPUT_TYPE)(total / len);                                          \
-  }
-
 // Bitonic sort helper - compare and swap elements based on direction
 #define DEFINE_COMPARE_SWAP(TYPE_NAME, TYPE, SELECT_FUNC)                      \
   static inline void compare_swap_##TYPE_NAME(TYPE *arr, uint16_t idx_a,       \
@@ -427,9 +407,9 @@ static inline bool get_bit64(uint64_t value, unsigned int n) {
     arr[idx_b] = SELECT_FUNC(dir_asc, greater, lesser);                        \
   }
 
-// Bitonic sort - requires power-of-2 array size
+// Sort - uses bitonic sort algorithm, requires power-of-2 array size
 #define DEFINE_BITONIC_SORT(TYPE_NAME, TYPE)                                   \
-  static inline void bitonic_sort_##TYPE_NAME##_asc(TYPE *arr, uint16_t n) {   \
+  static inline void sort_##TYPE_NAME##_asc(TYPE *arr, uint16_t n) {           \
     for (uint16_t k = 2; k <= n; k <<= 1) {                                    \
       for (uint16_t j = k >> 1; j > 0; j >>= 1) {                              \
         for (uint16_t i = 0; i < n; i++) {                                     \
@@ -443,7 +423,7 @@ static inline bool get_bit64(uint64_t value, unsigned int n) {
     }                                                                          \
   }                                                                            \
                                                                                \
-  static inline void bitonic_sort_##TYPE_NAME##_desc(TYPE *arr, uint16_t n) {  \
+  static inline void sort_##TYPE_NAME##_desc(TYPE *arr, uint16_t n) {          \
     for (uint16_t k = 2; k <= n; k <<= 1) {                                    \
       for (uint16_t j = k >> 1; j > 0; j >>= 1) {                              \
         for (uint16_t i = 0; i < n; i++) {                                     \
@@ -462,7 +442,6 @@ static inline bool get_bit64(uint64_t value, unsigned int n) {
   DEFINE_MIN_ARRAY(BITS, uint##BITS##_t, select##BITS)                         \
   DEFINE_MAX_ARRAY(BITS, uint##BITS##_t, select##BITS)                         \
   DEFINE_SUM_ARRAY(BITS, uint##BITS##_t, uint64_t)                             \
-  DEFINE_AVG_ARRAY(BITS, uint##BITS##_t, uint64_t)                             \
   DEFINE_COMPARE_SWAP(uint##BITS, uint##BITS##_t, select##BITS)                \
   DEFINE_BITONIC_SORT(uint##BITS, uint##BITS##_t)
 
@@ -531,30 +510,32 @@ static inline bool get_bit64(uint64_t value, unsigned int n) {
     return scratch[0];                                                         \
   }
 
-#define DEFINE_AVG_ARRAY_SIGNED(BITS)                                          \
-  static inline int##BITS##_t iavg##BITS##_array(                              \
-      const int##BITS##_t *arr, uint16_t len, int64_t *scratch) {              \
-    int64_t total = isum##BITS##_array(arr, len, scratch);                     \
-    return (int##BITS##_t)(total / len);                                       \
-  }
-
 // Generate functions for signed types
 #define GENERATE_ARRAY_OPS_SIGNED(BITS)                                        \
   DEFINE_MIN_ARRAY_SIGNED(BITS)                                                \
   DEFINE_MAX_ARRAY_SIGNED(BITS)                                                \
   DEFINE_SUM_ARRAY_SIGNED(BITS)                                                \
-  DEFINE_AVG_ARRAY_SIGNED(BITS)                                                \
   DEFINE_COMPARE_SWAP(int##BITS, int##BITS##_t, iselect##BITS)                 \
   DEFINE_BITONIC_SORT(int##BITS, int##BITS##_t)
 
 GENERATE_ARRAY_OPS_UNSIGNED(8)
 GENERATE_ARRAY_OPS_UNSIGNED(16)
 GENERATE_ARRAY_OPS_UNSIGNED(32)
-GENERATE_ARRAY_OPS_UNSIGNED(64)
+
+// Generate 64-bit unsigned functions except sum (sum64 would overflow without 128-bit accumulator)
+DEFINE_MIN_ARRAY(64, uint64_t, select64)
+DEFINE_MAX_ARRAY(64, uint64_t, select64)
+DEFINE_COMPARE_SWAP(uint64, uint64_t, select64)
+DEFINE_BITONIC_SORT(uint64, uint64_t)
 
 GENERATE_ARRAY_OPS_SIGNED(8)
 GENERATE_ARRAY_OPS_SIGNED(16)
 GENERATE_ARRAY_OPS_SIGNED(32)
-GENERATE_ARRAY_OPS_SIGNED(64)
+
+// Generate 64-bit signed functions except sum (isum64 would overflow without 128-bit accumulator)
+DEFINE_MIN_ARRAY_SIGNED(64)
+DEFINE_MAX_ARRAY_SIGNED(64)
+DEFINE_COMPARE_SWAP(int64, int64_t, iselect64)
+DEFINE_BITONIC_SORT(int64, int64_t)
 
 #endif // PARASOL_H
