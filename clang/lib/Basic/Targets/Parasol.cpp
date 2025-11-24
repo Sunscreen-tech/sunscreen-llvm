@@ -44,8 +44,8 @@ ArrayRef<TargetInfo::GCCRegAlias> ParasolTargetInfo::getGCCRegAliases() const {
 
 void ParasolTargetInfo::getTargetDefines(const LangOptions &Opts,
                                        MacroBuilder &Builder) const {
-  // Define the __Parasol__ macro when building for this target
-  Builder.defineMacro("__Parasol__");
+  // Define the __PARASOL__ macro when building for this target
+  Builder.defineMacro("__PARASOL__");
 }
 
 bool ParasolTargetInfo::validateAsmConstraint(
