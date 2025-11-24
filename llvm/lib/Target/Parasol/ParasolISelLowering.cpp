@@ -15,6 +15,7 @@
 #include "ParasolTargetMachine.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -76,6 +77,10 @@ ParasolTargetLowering::ParasolTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BlockAddress, MVT::i32, Custom);
   setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
 
+  // Custom lowering for large constants via constant pools
+  setOperationAction(ISD::Constant, MVT::i64, Custom);
+  setOperationAction(ISD::Constant, MVT::i128, Custom);
+
   // Parasol has no select or setcc: expand to SELECT_CC.
   setOperationAction(
       {ISD::SELECT_CC},
@@ -121,8 +126,10 @@ const char *ParasolTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "ParasolISD::Ret";
   case ParasolISD::BR_CC:
     return "ParasolISD::BR_CC";
+  case ParasolISD::Wrapper:
+    return "ParasolISD::Wrapper";
   default:
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -178,7 +185,7 @@ void ParasolTargetLowering::analyzeInputArgs(
                   ArgFlags, CCInfo, IsRet, ArgTy, *this)) {
       LLVM_DEBUG(dbgs() << "InputArg #" << i << " has unhandled type " << ArgVT
                         << '\n');
-      llvm_unreachable(nullptr);
+      llvm_unreachable("Unhandled argument type");
     }
   }
 }
@@ -282,16 +289,10 @@ SDValue ParasolTargetLowering::LowerFormalArguments(
   }
 
   MachineFunction &MF = DAG.getMachineFunction();
-  Function &F = MF.getFunction();
-  MachineFrameInfo &MFI = MF.getFrameInfo();
 
   // Assign locations to all of the incoming arguments.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, isVarArg, MF, ArgLocs, *DAG.getContext());
-
-  SmallVector<SDValue, 16> ArgValues;
-  SDValue ArgValue;
-  Function::const_arg_iterator CurOrigArg = MF.getFunction().arg_begin();
 
   analyzeInputArgs(MF, CCInfo, Ins, false);
 
@@ -397,8 +398,9 @@ ParasolTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 /// and then confiscate the rest of the parameter registers to insure
 /// this.
 
-void ParasolTargetLowering::HandleByVal(CCState *State, unsigned &Size,
-                                        Align align) const {}
+void ParasolTargetLowering::HandleByVal(CCState * /*State*/,
+                                        unsigned & /*Size*/,
+                                        Align /*Alignment*/) const {}
 
 SDValue
 ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
@@ -418,7 +420,7 @@ ParasolTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     int64_t Size = Val.getValueType().getStoreSize();
 
     // Align our offset to the next allowable address.
-    Offset += (Size - Offset % Size) % Size;
+    Offset = alignTo(Offset, Align(Size));
 
     SDValue ReturnPtr = DAG.getRegister(Parasol::X10, MVT::i32);
     SDValue OffsetNode = DAG.getConstant(Offset, DL, MVT::i32);
@@ -463,7 +465,47 @@ SDValue ParasolTargetLowering::LowerGlobalAddress(SDValue Op,
 
 SDValue ParasolTargetLowering::LowerConstantPool(SDValue Op,
                                                  SelectionDAG &DAG) const {
-  llvm_unreachable("Unsupported constant pool");
+  EVT PtrVT = Op.getValueType();
+  SDLoc DL(Op);
+  ConstantPoolSDNode *CP = cast<ConstantPoolSDNode>(Op);
+
+  SDValue Res;
+  if (CP->isMachineConstantPoolEntry())
+    Res =
+        DAG.getTargetConstantPool(CP->getMachineCPVal(), PtrVT, CP->getAlign());
+  else
+    Res = DAG.getTargetConstantPool(CP->getConstVal(), PtrVT, CP->getAlign());
+
+  return DAG.getNode(ParasolISD::Wrapper, DL, PtrVT, Res);
+}
+
+SDValue ParasolTargetLowering::LowerConstant(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  const ConstantSDNode *CN = cast<ConstantSDNode>(Op);
+  EVT VT = Op.getValueType();
+  SDLoc DL(Op);
+
+  assert((VT == MVT::i64 || VT == MVT::i128) &&
+         "LowerConstant called for unsupported type");
+
+  // Create constant pool entry for large constants.
+  // All i64/i128 constants (including zero) are stored in the constant pool.
+  // The AsmPrinter expands LoadConstantPool pseudo-instructions to:
+  //   LDI dst, 0                    ; Load zero as base address
+  //   LOAD dst, dst, size, symbol   ; Load constant from pool
+  Type *Ty = Type::getIntNTy(*DAG.getContext(), VT.getSizeInBits());
+  const Constant *C = ConstantInt::get(Ty, CN->getAPIntValue());
+
+  // Use natural alignment for constant pool entries to ensure efficient access:
+  // 8 bytes for i64 (64 bits), 16 bytes for i128 (128 bits)
+  Align RequiredAlign = (VT == MVT::i128) ? Align(16) : Align(8);
+
+  LLVM_DEBUG(dbgs() << "Creating constant pool entry for "
+                    << (VT == MVT::i128 ? "i128" : "i64")
+                    << " constant: " << CN->getAPIntValue() << "\n");
+
+  SDValue CP = DAG.getTargetConstantPool(C, MVT::i32, RequiredAlign);
+  return DAG.getNode(ParasolISD::Wrapper, DL, VT, CP);
 }
 
 SDValue ParasolTargetLowering::LowerBlockAddress(SDValue Op,
@@ -485,6 +527,8 @@ SDValue ParasolTargetLowering::LowerOperation(SDValue Op,
     return LowerBlockAddress(Op, DAG);
   case ISD::ConstantPool:
     return LowerConstantPool(Op, DAG);
+  case ISD::Constant:
+    return LowerConstant(Op, DAG);
   case ISD::RETURNADDR:
     return LowerRETURNADDR(Op, DAG);
   default:

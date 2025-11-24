@@ -38,6 +38,10 @@ enum NodeType {
   BR_CC,
 
   STOREBASEOFFSET,
+
+  // Wrapper for addresses of global values, constant pools, etc.
+  Wrapper,
+
   // Return
   Ret,
 };
@@ -74,6 +78,7 @@ private:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;
 
   using RegsToPassVector = SmallVector<std::pair<unsigned, SDValue>, 8>;

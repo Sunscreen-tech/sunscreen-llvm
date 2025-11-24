@@ -31,7 +31,7 @@ public:
       : MCAsmBackend(StringRef(T.getName()) == "parasol"
                          ? llvm::endianness::little
                          : llvm::endianness::big),
-        TheTarget(T) {}
+        TheTarget(T), Is64Bit(false) {}
 
   unsigned getNumFixupKinds() const override {
     return Parasol::NumTargetFixupKinds;
@@ -53,6 +53,7 @@ public:
     static const MCFixupKindInfo Infos[Parasol::NumTargetFixupKinds] = {
         {"fixup_br_one_reg_imm", 14, 32, MCFixupKindInfo::FKF_IsPCRel},
         {"fixup_br_imm", 8, 32, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_load_addr", 27, 32, 0}, // Offset field for absolute address
     };
 
     if (Kind < FirstTargetFixupKind)
@@ -74,13 +75,10 @@ public:
   bool fixupNeedsRelaxation(const MCFixup &Fixup, uint64_t Value,
                             const MCRelaxableFragment *DF,
                             const MCAsmLayout &Layout) const override {
-    // FIXME.
     llvm_unreachable("fixupNeedsRelaxation() unimplemented");
-    return false;
   }
   void relaxInstruction(MCInst &Inst,
                         const MCSubtargetInfo &STI) const override {
-    // FIXME.
     llvm_unreachable("relaxInstruction() unimplemented");
   }
 
@@ -114,6 +112,14 @@ public:
       return;
 
     auto fixup_info = getFixupKindInfo(Fixup.getKind());
+    // Parasol uses 32-bit addresses/offsets. For PC-relative fixups, the value
+    // may be sign-extended (negative offsets for backward branches). For
+    // absolute fixups, verify no high bits are set.
+    if (!(fixup_info.Flags & MCFixupKindInfo::FKF_IsPCRel)) {
+      assert(
+          (Value >> 32) == 0 &&
+          "Absolute fixup value exceeds 32-bit range - indicates upstream bug");
+    }
     Value = (Value & 0xFFFFFFFF) << fixup_info.TargetOffset;
     if (!Value)
       return; // Doesn't change encoding.

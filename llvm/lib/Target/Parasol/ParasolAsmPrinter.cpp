@@ -21,6 +21,7 @@
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -64,7 +65,61 @@ void ParasolAsmPrinter::EmitToStreamer(MCStreamer &S, const MCInst &Inst) {
   AsmPrinter::EmitToStreamer(*OutStreamer, Inst);
 }
 
+// Bit sizes for constant pool load instructions
+static constexpr unsigned kLoadSize64 = 64;
+static constexpr unsigned kLoadSize128 = 128;
+
 void ParasolAsmPrinter::emitInstruction(const MachineInstr *MI) {
+  // Handle LoadConstantPool pseudo-instructions
+  unsigned Opc = MI->getOpcode();
+  if (Opc == Parasol::LoadConstantPool64 ||
+      Opc == Parasol::LoadConstantPool128) {
+    // These pseudo-instructions need to be expanded to a sequence:
+    // 1. LoadImmediate32 dst, 0  - Load 0 into dst (to use as base address)
+    //    Note: Parasol does not have a dedicated zero register, so we must
+    //    explicitly load zero before using it as a base address.
+    // 2. LOAD dst, dst, size, symbol - Load from (0 + symbol) into dst
+    //    The symbol offset becomes the effective address via relocation.
+    //
+    // We use dst as both the temporary for 0 and the final destination.
+    // This works because LOAD reads addr before writing to dst.
+
+    const unsigned DstReg = MI->getOperand(0).getReg();
+
+    // Emit: LoadImmediate32 dst, 0
+    MCInst LDI;
+    LDI.setOpcode(Parasol::LoadImmediate32);
+    LDI.addOperand(MCOperand::createReg(DstReg));
+    LDI.addOperand(MCOperand::createImm(0));
+    EmitToStreamer(*OutStreamer, LDI);
+
+    // Emit: LOAD dst, dst, size, symbol
+    MCInst LoadInst;
+    LoadInst.setOpcode(Parasol::LOAD);
+
+    // Operand 0: destination register (val)
+    LoadInst.addOperand(MCOperand::createReg(DstReg));
+
+    // Operand 1: address register (addr) - use dst which now contains 0
+    LoadInst.addOperand(MCOperand::createReg(DstReg));
+
+    // Operand 2: size (in bits)
+    const unsigned Size =
+        (Opc == Parasol::LoadConstantPool64) ? kLoadSize64 : kLoadSize128;
+    LoadInst.addOperand(MCOperand::createImm(Size));
+
+    // Operand 3: offset - constant pool symbol (this will create a fixup)
+    const MachineOperand &CPOp = MI->getOperand(1);
+    assert(CPOp.isCPI() && "Expected constant pool index operand");
+    unsigned CPIdx = CPOp.getIndex();
+    MCSymbol *CPSym = GetCPISymbol(CPIdx);
+    const MCExpr *Expr = MCSymbolRefExpr::create(CPSym, OutContext);
+    LoadInst.addOperand(MCOperand::createExpr(Expr));
+
+    EmitToStreamer(*OutStreamer, LoadInst);
+    return;
+  }
+
   // Do any auto-generated pseudo lowerings.
   if (emitPseudoExpansionLowering(*OutStreamer, MI))
     return;

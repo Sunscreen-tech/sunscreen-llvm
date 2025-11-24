@@ -10,9 +10,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "ParasolISelDAGToDAG.h"
+#include "ParasolISelLowering.h"
 #include "ParasolSubtarget.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
+#include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
 
 using namespace llvm;
 
@@ -33,6 +38,28 @@ void ParasolDAGToDAGISel::Select(SDNode *Node) {
     LLVM_DEBUG(errs() << "== "; Node->dump(CurDAG); errs() << "\n");
     Node->setNodeId(-1);
     return;
+  }
+
+  // Custom selection for Wrapper nodes (constant pools, globals, etc.)
+  if (Node->getOpcode() == ParasolISD::Wrapper) {
+    SDValue Op = Node->getOperand(0);
+    EVT VT = Node->getValueType(0);
+
+    // Handle constant pool wrappers
+    if (const ConstantPoolSDNode *CN = dyn_cast<ConstantPoolSDNode>(Op)) {
+      assert((VT == MVT::i64 || VT == MVT::i128) &&
+             "Unexpected type for constant pool wrapper");
+      unsigned Opcode = (VT == MVT::i64) ? Parasol::LoadConstantPool64
+                                         : Parasol::LoadConstantPool128;
+      LLVM_DEBUG(dbgs() << "Selecting constant pool load for "
+                        << (VT == MVT::i64 ? "i64" : "i128") << "\n");
+
+      SDValue CPIdx = CurDAG->getTargetConstantPool(
+          CN->getConstVal(), MVT::i32, CN->getAlign(), CN->getOffset());
+      SDNode *ResNode = CurDAG->getMachineNode(Opcode, dl, VT, CPIdx);
+      ReplaceNode(Node, ResNode);
+      return;
+    }
   }
 
   // Select the default instruction

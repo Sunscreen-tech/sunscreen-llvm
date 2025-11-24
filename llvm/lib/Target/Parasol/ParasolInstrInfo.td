@@ -35,6 +35,9 @@ def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
 def callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_CallSeqEnd,
                            [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 
+// Wrapper node for constant pool addresses
+def parasol_wrapper : SDNode<"ParasolISD::Wrapper", SDTIntUnaryOp>;
+
 include "ParasolInstrFormats.td"
 
 let isCodeGenOnly = 1, Defs = [X2], Uses = [X2] in {
@@ -56,6 +59,12 @@ def LoadImmediate8 : ParasolLoadImm<Parasolimm8, i8>;
 def LoadImmediate16 : ParasolLoadImm<Parasolimm16, i16>;
 def LoadImmediate32 : ParasolLoadImm<Parasolimm32, i32>;
 
+// Pseudo-instructions for loading from constant pools
+// Note: These are selected manually in ISelDAGToDAG, not via TableGen patterns
+let isPseudo = 1, isCodeGenOnly = 1 in {
+def LoadConstantPool64 : Pseudo<(outs IR:$dst), (ins i32imm:$cpidx), []>;
+def LoadConstantPool128 : Pseudo<(outs IR:$dst), (ins i32imm:$cpidx), []>;
+}
 
 //===----------------------------------------------------------------------===//
 // Load/Store Instructions

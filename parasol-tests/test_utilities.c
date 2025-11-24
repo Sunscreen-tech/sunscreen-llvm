@@ -102,8 +102,18 @@ void test_sign(void) {
   TEST("sign8(-128) min", sign8(-128) == -1);
 
   TEST("sign16(0)", sign16(0) == 0);
+  TEST("sign16(32767) max", sign16(32767) == 1);
+  TEST("sign16(-32768) min", sign16(-32768) == -1);
+
   TEST("sign32(0)", sign32(0) == 0);
-  // sign64 omitted - generates 64-bit constant (-1) not supported by parasol target
+  TEST("sign32(INT32_MAX) max", sign32(2147483647) == 1);
+  TEST("sign32(INT32_MIN) min", sign32(-2147483647 - 1) == -1);
+
+  TEST("sign64(0)", sign64(0) == 0);
+  TEST("sign64(INT64_MAX) max", sign64(9223372036854775807LL) == 1);
+  TEST("sign64(INT64_MIN) min", sign64(-9223372036854775807LL - 1) == -1);
+  TEST("sign64(42) positive", sign64(42) == 1);
+  TEST("sign64(-42) negative", sign64(-42) == -1);
 }
 
 void test_absdiff(void) {
@@ -118,12 +128,43 @@ void test_absdiff(void) {
 }
 
 void test_saturating_add(void) {
+  // 8-bit unsigned
   TEST("sadd8(0, 0)", sadd8(0, 0) == 0);
   TEST("sadd8(255, 0) boundary", sadd8(255, 0) == 255);
   TEST("sadd8(255, 1) overflow", sadd8(255, 1) == 255);
   TEST("sadd8(200, 100) overflow", sadd8(200, 100) == 255);
   TEST("sadd8(100, 100) no overflow", sadd8(100, 100) == 200);
 
+  // 16-bit unsigned
+  TEST("sadd16(0, 0)", sadd16(0, 0) == 0);
+  TEST("sadd16(65535, 0) boundary", sadd16(65535, 0) == 65535);
+  TEST("sadd16(65535, 1) overflow", sadd16(65535, 1) == 65535);
+  TEST("sadd16(60000, 10000) overflow", sadd16(60000, 10000) == 65535);
+  TEST("sadd16(30000, 30000) no overflow", sadd16(30000, 30000) == 60000);
+
+  // 32-bit unsigned
+  TEST("sadd32(0, 0)", sadd32(0, 0) == 0);
+  TEST("sadd32(0xFFFFFFFF, 0) boundary", sadd32(0xFFFFFFFFU, 0) == 0xFFFFFFFFU);
+  TEST("sadd32(0xFFFFFFFF, 1) overflow", sadd32(0xFFFFFFFFU, 1) == 0xFFFFFFFFU);
+  TEST("sadd32(0xF0000000, 0x20000000) overflow",
+       sadd32(0xF0000000U, 0x20000000U) == 0xFFFFFFFFU);
+  TEST("sadd32(0x40000000, 0x40000000) no overflow",
+       sadd32(0x40000000U, 0x40000000U) == 0x80000000U);
+
+  // 64-bit unsigned
+  TEST("sadd64(0, 0)", sadd64(0, 0) == 0);
+  TEST("sadd64(0xFFFFFFFFFFFFFFFF, 0) boundary",
+       sadd64(0xFFFFFFFFFFFFFFFFULL, 0) == 0xFFFFFFFFFFFFFFFFULL);
+  TEST("sadd64(0xFFFFFFFFFFFFFFFF, 1) overflow",
+       sadd64(0xFFFFFFFFFFFFFFFFULL, 1) == 0xFFFFFFFFFFFFFFFFULL);
+  TEST("sadd64(0xF000000000000000, 0x2000000000000000) overflow",
+       sadd64(0xF000000000000000ULL, 0x2000000000000000ULL) ==
+           0xFFFFFFFFFFFFFFFFULL);
+  TEST("sadd64(0x4000000000000000, 0x4000000000000000) no overflow",
+       sadd64(0x4000000000000000ULL, 0x4000000000000000ULL) ==
+           0x8000000000000000ULL);
+
+  // 8-bit signed
   TEST("isadd8(0, 0)", isadd8(0, 0) == 0);
   TEST("isadd8(127, 0) boundary", isadd8(127, 0) == 127);
   TEST("isadd8(127, 1) pos overflow", isadd8(127, 1) == 127);
@@ -131,21 +172,114 @@ void test_saturating_add(void) {
   TEST("isadd8(-128, -1) neg overflow", isadd8(-128, -1) == -128);
   TEST("isadd8(-100, -50) neg overflow", isadd8(-100, -50) == -128);
   TEST("isadd8(50, 50) no overflow", isadd8(50, 50) == 100);
+
+  // 16-bit signed
+  TEST("isadd16(0, 0)", isadd16(0, 0) == 0);
+  TEST("isadd16(32767, 0) boundary", isadd16(32767, 0) == 32767);
+  TEST("isadd16(32767, 1) pos overflow", isadd16(32767, 1) == 32767);
+  TEST("isadd16(20000, 20000) pos overflow", isadd16(20000, 20000) == 32767);
+  TEST("isadd16(-32768, -1) neg overflow", isadd16(-32768, -1) == -32768);
+  TEST("isadd16(-20000, -20000) neg overflow",
+       isadd16(-20000, -20000) == -32768);
+  TEST("isadd16(10000, 10000) no overflow", isadd16(10000, 10000) == 20000);
+
+  // 32-bit signed
+  TEST("isadd32(0, 0)", isadd32(0, 0) == 0);
+  TEST("isadd32(INT32_MAX, 0) boundary", isadd32(2147483647, 0) == 2147483647);
+  TEST("isadd32(INT32_MAX, 1) pos overflow", isadd32(2147483647, 1) == 2147483647);
+  TEST("isadd32(2000000000, 200000000) pos overflow",
+       isadd32(2000000000, 200000000) == 2147483647);
+  TEST("isadd32(INT32_MIN, -1) neg overflow",
+       isadd32(-2147483647 - 1, -1) == -2147483647 - 1);
+  TEST("isadd32(-2000000000, -200000000) neg overflow",
+       isadd32(-2000000000, -200000000) == -2147483647 - 1);
+  TEST("isadd32(1000000000, 1000000000) no overflow",
+       isadd32(1000000000, 1000000000) == 2000000000);
+
+  // 64-bit signed
+  TEST("isadd64(0, 0)", isadd64(0, 0) == 0);
+  TEST("isadd64(INT64_MAX, 0) boundary",
+       isadd64(9223372036854775807LL, 0) == 9223372036854775807LL);
+  TEST("isadd64(INT64_MAX, 1) pos overflow",
+       isadd64(9223372036854775807LL, 1) == 9223372036854775807LL);
+  TEST("isadd64(INT64_MIN, -1) neg overflow",
+       isadd64(-9223372036854775807LL - 1, -1) == -9223372036854775807LL - 1);
+  TEST("isadd64(1000000000000000000, 1000000000000000000) no overflow",
+       isadd64(1000000000000000000LL, 1000000000000000000LL) ==
+           2000000000000000000LL);
 }
 
 void test_saturating_sub(void) {
+  // 8-bit unsigned
   TEST("ssub8(0, 0)", ssub8(0, 0) == 0);
   TEST("ssub8(0, 1) underflow", ssub8(0, 1) == 0);
   TEST("ssub8(10, 20) underflow", ssub8(10, 20) == 0);
   TEST("ssub8(255, 0) boundary", ssub8(255, 0) == 255);
   TEST("ssub8(100, 50) no underflow", ssub8(100, 50) == 50);
 
+  // 16-bit unsigned
+  TEST("ssub16(0, 0)", ssub16(0, 0) == 0);
+  TEST("ssub16(0, 1) underflow", ssub16(0, 1) == 0);
+  TEST("ssub16(1000, 2000) underflow", ssub16(1000, 2000) == 0);
+  TEST("ssub16(65535, 0) boundary", ssub16(65535, 0) == 65535);
+  TEST("ssub16(50000, 25000) no underflow", ssub16(50000, 25000) == 25000);
+
+  // 32-bit unsigned
+  TEST("ssub32(0, 0)", ssub32(0, 0) == 0);
+  TEST("ssub32(0, 1) underflow", ssub32(0, 1) == 0);
+  TEST("ssub32(1000000, 2000000) underflow", ssub32(1000000, 2000000) == 0);
+  TEST("ssub32(0xFFFFFFFF, 0) boundary", ssub32(0xFFFFFFFFU, 0) == 0xFFFFFFFFU);
+  TEST("ssub32(0x80000000, 0x40000000) no underflow",
+       ssub32(0x80000000U, 0x40000000U) == 0x40000000U);
+
+  // 64-bit unsigned
+  TEST("ssub64(0, 0)", ssub64(0, 0) == 0);
+  TEST("ssub64(0, 1) underflow", ssub64(0, 1) == 0);
+  TEST("ssub64(1000000000000, 2000000000000) underflow",
+       ssub64(1000000000000ULL, 2000000000000ULL) == 0);
+  TEST("ssub64(0xFFFFFFFFFFFFFFFF, 0) boundary",
+       ssub64(0xFFFFFFFFFFFFFFFFULL, 0) == 0xFFFFFFFFFFFFFFFFULL);
+  TEST("ssub64(0x8000000000000000, 0x4000000000000000) no underflow",
+       ssub64(0x8000000000000000ULL, 0x4000000000000000ULL) ==
+           0x4000000000000000ULL);
+
+  // 8-bit signed
   TEST("issub8(0, 0)", issub8(0, 0) == 0);
   TEST("issub8(127, -1) pos overflow", issub8(127, -1) == 127);
   TEST("issub8(100, -50) pos overflow", issub8(100, -50) == 127);
   TEST("issub8(-128, 1) neg overflow", issub8(-128, 1) == -128);
   TEST("issub8(-100, 50) neg overflow", issub8(-100, 50) == -128);
   TEST("issub8(50, 25) no overflow", issub8(50, 25) == 25);
+
+  // 16-bit signed
+  TEST("issub16(0, 0)", issub16(0, 0) == 0);
+  TEST("issub16(32767, -1) pos overflow", issub16(32767, -1) == 32767);
+  TEST("issub16(20000, -20000) pos overflow", issub16(20000, -20000) == 32767);
+  TEST("issub16(-32768, 1) neg overflow", issub16(-32768, 1) == -32768);
+  TEST("issub16(-20000, 20000) neg overflow", issub16(-20000, 20000) == -32768);
+  TEST("issub16(10000, 5000) no overflow", issub16(10000, 5000) == 5000);
+
+  // 32-bit signed
+  TEST("issub32(0, 0)", issub32(0, 0) == 0);
+  TEST("issub32(INT32_MAX, -1) pos overflow", issub32(2147483647, -1) == 2147483647);
+  TEST("issub32(2000000000, -200000000) pos overflow",
+       issub32(2000000000, -200000000) == 2147483647);
+  TEST("issub32(INT32_MIN, 1) neg overflow",
+       issub32(-2147483647 - 1, 1) == -2147483647 - 1);
+  TEST("issub32(-2000000000, 200000000) neg overflow",
+       issub32(-2000000000, 200000000) == -2147483647 - 1);
+  TEST("issub32(1000000000, 500000000) no overflow",
+       issub32(1000000000, 500000000) == 500000000);
+
+  // 64-bit signed
+  TEST("issub64(0, 0)", issub64(0, 0) == 0);
+  TEST("issub64(INT64_MAX, -1) pos overflow",
+       issub64(9223372036854775807LL, -1) == 9223372036854775807LL);
+  TEST("issub64(INT64_MIN, 1) neg overflow",
+       issub64(-9223372036854775807LL - 1, 1) == -9223372036854775807LL - 1);
+  TEST("issub64(1000000000000000000, 500000000000000000) no overflow",
+       issub64(1000000000000000000LL, 500000000000000000LL) ==
+           500000000000000000LL);
 }
 
 void test_pow(void) {
@@ -169,13 +303,38 @@ void test_pow(void) {
 }
 
 void test_parity(void) {
+  // 8-bit
   TEST("is_even8(0)", is_even8(0));
   TEST("is_even8(2)", is_even8(2));
   TEST("is_even8(255) false", !is_even8(255));
-
   TEST("is_odd8(0) false", !is_odd8(0));
   TEST("is_odd8(1)", is_odd8(1));
   TEST("is_odd8(255)", is_odd8(255));
+
+  // 16-bit
+  TEST("is_even16(0)", is_even16(0));
+  TEST("is_even16(65534)", is_even16(65534));
+  TEST("is_even16(65535) false", !is_even16(65535));
+  TEST("is_odd16(0) false", !is_odd16(0));
+  TEST("is_odd16(1)", is_odd16(1));
+  TEST("is_odd16(65535)", is_odd16(65535));
+
+  // 32-bit
+  TEST("is_even32(0)", is_even32(0));
+  TEST("is_even32(0xFFFFFFFE)", is_even32(0xFFFFFFFEU));
+  TEST("is_even32(0xFFFFFFFF) false", !is_even32(0xFFFFFFFFU));
+  TEST("is_odd32(0) false", !is_odd32(0));
+  TEST("is_odd32(1)", is_odd32(1));
+  TEST("is_odd32(0xFFFFFFFF)", is_odd32(0xFFFFFFFFU));
+
+  // 64-bit
+  TEST("is_even64(0)", is_even64(0));
+  TEST("is_even64(0xFFFFFFFFFFFFFFFE)", is_even64(0xFFFFFFFFFFFFFFFEULL));
+  TEST("is_even64(0xFFFFFFFFFFFFFFFF) false",
+       !is_even64(0xFFFFFFFFFFFFFFFFULL));
+  TEST("is_odd64(0) false", !is_odd64(0));
+  TEST("is_odd64(1)", is_odd64(1));
+  TEST("is_odd64(0xFFFFFFFFFFFFFFFF)", is_odd64(0xFFFFFFFFFFFFFFFFULL));
 }
 
 void test_get_bit(void) {
@@ -469,41 +628,114 @@ void test_absdiff_properties(void) {
 }
 
 void test_saturating_add_properties(void) {
-  PROPTEST("saturating add properties");
+  PROPTEST("saturating add properties (8/16/32/64-bit)");
 
   for (int trial = 0; trial < PROPERTY_TEST_TRIALS; trial++) {
-    uint8_t a = (uint8_t)rand();
-    uint8_t b = (uint8_t)rand();
+    // 8-bit tests
+    uint8_t a8 = (uint8_t)rand();
+    uint8_t b8 = (uint8_t)rand();
+    uint8_t result8 = sadd8(a8, b8);
 
-    uint8_t result = sadd8(a, b);
-
-    // Property: result is in valid range [0, 255]
-    // Always true for uint8_t
-
-    // Property: identity sadd(x, 0) == x
-    if (sadd8(a, 0) != a) {
-      PROPFAIL("identity failed: a=%u sadd(a,0)=%u", a, sadd8(a, 0));
+    if (sadd8(a8, 0) != a8) {
+      PROPFAIL("sadd8 identity failed: a=%u", a8);
       return;
     }
-
-    // Property: commutativity
-    if (sadd8(a, b) != sadd8(b, a)) {
-      PROPFAIL("commutativity failed: a=%u b=%u sadd(a,b)=%u sadd(b,a)=%u", a,
-               b, sadd8(a, b), sadd8(b, a));
+    if (sadd8(a8, b8) != sadd8(b8, a8)) {
+      PROPFAIL("sadd8 commutativity failed: a=%u b=%u", a8, b8);
       return;
     }
-
-    // Property: saturation at boundary
-    if ((uint16_t)a + (uint16_t)b > 255) {
-      if (result != 255) {
-        PROPFAIL("overflow saturation failed: a=%u b=%u result=%u expected=255",
-                 a, b, result);
+    if ((uint16_t)a8 + (uint16_t)b8 > 0xFF) {
+      if (result8 != 0xFF) {
+        PROPFAIL("sadd8 overflow: a=%u b=%u result=%u expected=255", a8, b8,
+                 result8);
         return;
       }
     } else {
-      if (result != (uint8_t)(a + b)) {
-        PROPFAIL("no overflow failed: a=%u b=%u result=%u expected=%u", a, b,
-                 result, (uint8_t)(a + b));
+      if (result8 != (uint8_t)(a8 + b8)) {
+        PROPFAIL("sadd8 no overflow: a=%u b=%u result=%u expected=%u", a8, b8,
+                 result8, (uint8_t)(a8 + b8));
+        return;
+      }
+    }
+
+    // 16-bit tests
+    uint16_t a16 = (uint16_t)rand();
+    uint16_t b16 = (uint16_t)rand();
+    uint16_t result16 = sadd16(a16, b16);
+
+    if (sadd16(a16, 0) != a16) {
+      PROPFAIL("sadd16 identity failed: a=%u", a16);
+      return;
+    }
+    if (sadd16(a16, b16) != sadd16(b16, a16)) {
+      PROPFAIL("sadd16 commutativity failed: a=%u b=%u", a16, b16);
+      return;
+    }
+    if ((uint32_t)a16 + (uint32_t)b16 > 0xFFFF) {
+      if (result16 != 0xFFFF) {
+        PROPFAIL("sadd16 overflow: a=%u b=%u result=%u expected=65535", a16, b16,
+                 result16);
+        return;
+      }
+    } else {
+      if (result16 != (uint16_t)(a16 + b16)) {
+        PROPFAIL("sadd16 no overflow: a=%u b=%u result=%u expected=%u", a16, b16,
+                 result16, (uint16_t)(a16 + b16));
+        return;
+      }
+    }
+
+    // 32-bit tests
+    uint32_t a32 = (uint32_t)rand() | ((uint32_t)rand() << 16);
+    uint32_t b32 = (uint32_t)rand() | ((uint32_t)rand() << 16);
+    uint32_t result32 = sadd32(a32, b32);
+
+    if (sadd32(a32, 0) != a32) {
+      PROPFAIL("sadd32 identity failed: a=%u", a32);
+      return;
+    }
+    if (sadd32(a32, b32) != sadd32(b32, a32)) {
+      PROPFAIL("sadd32 commutativity failed: a=%u b=%u", a32, b32);
+      return;
+    }
+    if ((uint64_t)a32 + (uint64_t)b32 > 0xFFFFFFFFU) {
+      if (result32 != 0xFFFFFFFFU) {
+        PROPFAIL("sadd32 overflow: a=%u b=%u result=%u expected=0xFFFFFFFF", a32,
+                 b32, result32);
+        return;
+      }
+    } else {
+      if (result32 != (uint32_t)(a32 + b32)) {
+        PROPFAIL("sadd32 no overflow: a=%u b=%u result=%u expected=%u", a32, b32,
+                 result32, (uint32_t)(a32 + b32));
+        return;
+      }
+    }
+
+    // 64-bit tests
+    uint64_t a64 = ((uint64_t)rand() << 32) | rand();
+    uint64_t b64 = ((uint64_t)rand() << 32) | rand();
+    uint64_t result64 = sadd64(a64, b64);
+
+    if (sadd64(a64, 0) != a64) {
+      PROPFAIL("sadd64 identity failed");
+      return;
+    }
+    if (sadd64(a64, b64) != sadd64(b64, a64)) {
+      PROPFAIL("sadd64 commutativity failed");
+      return;
+    }
+    // Check overflow: if a64 > MAX - b64, overflow occurred
+    if (a64 > 0xFFFFFFFFFFFFFFFFULL - b64) {
+      if (result64 != 0xFFFFFFFFFFFFFFFFULL) {
+        PROPFAIL("sadd64 overflow: result=%llu expected=0xFFFFFFFFFFFFFFFF",
+                 (unsigned long long)result64);
+        return;
+      }
+    } else {
+      if (result64 != a64 + b64) {
+        PROPFAIL("sadd64 no overflow: result=%llu expected=%llu",
+                 (unsigned long long)result64, (unsigned long long)(a64 + b64));
         return;
       }
     }
@@ -513,34 +745,97 @@ void test_saturating_add_properties(void) {
 }
 
 void test_saturating_sub_properties(void) {
-  PROPTEST("saturating sub properties");
+  PROPTEST("saturating sub properties (8/16/32/64-bit)");
 
   for (int trial = 0; trial < PROPERTY_TEST_TRIALS; trial++) {
-    uint8_t a = (uint8_t)rand();
-    uint8_t b = (uint8_t)rand();
+    // 8-bit tests
+    uint8_t a8 = (uint8_t)rand();
+    uint8_t b8 = (uint8_t)rand();
+    uint8_t result8 = ssub8(a8, b8);
 
-    uint8_t result = ssub8(a, b);
-
-    // Property: result is in valid range [0, 255]
-    // Always true for uint8_t
-
-    // Property: identity ssub(x, 0) == x
-    if (ssub8(a, 0) != a) {
-      PROPFAIL("identity failed: a=%u ssub(a,0)=%u", a, ssub8(a, 0));
+    if (ssub8(a8, 0) != a8) {
+      PROPFAIL("ssub8 identity failed: a=%u", a8);
       return;
     }
-
-    // Property: underflow saturation
-    if (a < b) {
-      if (result != 0) {
-        PROPFAIL("underflow saturation failed: a=%u b=%u result=%u expected=0",
-                 a, b, result);
+    if (a8 < b8) {
+      if (result8 != 0) {
+        PROPFAIL("ssub8 underflow: a=%u b=%u result=%u expected=0", a8, b8,
+                 result8);
         return;
       }
     } else {
-      if (result != (uint8_t)(a - b)) {
-        PROPFAIL("no underflow failed: a=%u b=%u result=%u expected=%u", a, b,
-                 result, (uint8_t)(a - b));
+      if (result8 != (uint8_t)(a8 - b8)) {
+        PROPFAIL("ssub8 no underflow: a=%u b=%u result=%u expected=%u", a8, b8,
+                 result8, (uint8_t)(a8 - b8));
+        return;
+      }
+    }
+
+    // 16-bit tests
+    uint16_t a16 = (uint16_t)rand();
+    uint16_t b16 = (uint16_t)rand();
+    uint16_t result16 = ssub16(a16, b16);
+
+    if (ssub16(a16, 0) != a16) {
+      PROPFAIL("ssub16 identity failed: a=%u", a16);
+      return;
+    }
+    if (a16 < b16) {
+      if (result16 != 0) {
+        PROPFAIL("ssub16 underflow: a=%u b=%u result=%u expected=0", a16, b16,
+                 result16);
+        return;
+      }
+    } else {
+      if (result16 != (uint16_t)(a16 - b16)) {
+        PROPFAIL("ssub16 no underflow: a=%u b=%u result=%u expected=%u", a16,
+                 b16, result16, (uint16_t)(a16 - b16));
+        return;
+      }
+    }
+
+    // 32-bit tests
+    uint32_t a32 = (uint32_t)rand() | ((uint32_t)rand() << 16);
+    uint32_t b32 = (uint32_t)rand() | ((uint32_t)rand() << 16);
+    uint32_t result32 = ssub32(a32, b32);
+
+    if (ssub32(a32, 0) != a32) {
+      PROPFAIL("ssub32 identity failed: a=%u", a32);
+      return;
+    }
+    if (a32 < b32) {
+      if (result32 != 0) {
+        PROPFAIL("ssub32 underflow: a=%u b=%u result=%u expected=0", a32, b32,
+                 result32);
+        return;
+      }
+    } else {
+      if (result32 != (uint32_t)(a32 - b32)) {
+        PROPFAIL("ssub32 no underflow: a=%u b=%u result=%u expected=%u", a32,
+                 b32, result32, (uint32_t)(a32 - b32));
+        return;
+      }
+    }
+
+    // 64-bit tests
+    uint64_t a64 = ((uint64_t)rand() << 32) | rand();
+    uint64_t b64 = ((uint64_t)rand() << 32) | rand();
+    uint64_t result64 = ssub64(a64, b64);
+
+    if (ssub64(a64, 0) != a64) {
+      PROPFAIL("ssub64 identity failed");
+      return;
+    }
+    if (a64 < b64) {
+      if (result64 != 0) {
+        PROPFAIL("ssub64 underflow: result=%llu expected=0",
+                 (unsigned long long)result64);
+        return;
+      }
+    } else {
+      if (result64 != a64 - b64) {
+        PROPFAIL("ssub64 no underflow: result=%llu expected=%llu",
+                 (unsigned long long)result64, (unsigned long long)(a64 - b64));
         return;
       }
     }
