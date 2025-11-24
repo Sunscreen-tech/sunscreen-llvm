@@ -27,7 +27,7 @@ typedef long long int64_t;
 // On Parasol target: use FHE-friendly cmux instruction
 // On other targets: use standard ternary operator
 
-#if defined(__Parasol__)
+#if defined(__PARASOL__)
 // FHE-friendly conditional selector using inline assembly
 #define DEFINE_SELECT(BITS)                                                    \
   static inline uint##BITS##_t select##BITS(bool cond, uint##BITS##_t a,       \
