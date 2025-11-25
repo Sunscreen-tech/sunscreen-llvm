@@ -1,9 +1,12 @@
-// Test file to force instantiation of all parasol.h functions for parasol target
-// This ensures the compiler actually compiles each function rather than
-// optimizing them away with -O2
+// test_parasol_compilation.c - Force instantiation of all parasol.h functions
 //
-// This file should compile successfully for the parasol target. If compilation
-// fails, it indicates functions that use unsupported instructions.
+// Created by Sunscreen under the AGPLv3 license; see the README at the
+// repository root for more information
+//
+// This file forces the compiler to compile each function rather than
+// optimizing them away with -O2. This file should compile successfully for
+// the parasol target. If compilation fails, it indicates functions that use
+// unsupported instructions.
 
 #include "../clang/lib/Headers/parasol.h"
 

@@ -1,3 +1,8 @@
+// test_alignment.c - Alignment verification tests for i128 constants
+//
+// Created by Sunscreen under the AGPLv3 license; see the README at the
+// repository root for more information
+
 #include <stdint.h>
 
 // Alignment verification tests for i128 constants

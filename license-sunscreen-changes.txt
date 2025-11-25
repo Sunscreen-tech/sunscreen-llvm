@@ -159,6 +159,9 @@ llvm/utils/gn/secondary/llvm/lib/Target/targets.gni
 utils/bazel/llvm_configs/llvm-config.h.cmake
 parasol-tests/.gitignore
 parasol-tests/run_tests.sh
+parasol-tests/test_alignment.c
 parasol-tests/test_array_reductions.c
 parasol-tests/test_array_sort.c
+parasol-tests/test_large_constants.c
+parasol-tests/test_parasol_compilation.c
 parasol-tests/test_utilities.c

@@ -1,3 +1,8 @@
+// test_large_constants.c - Tests for 64-bit and 128-bit constant generation
+//
+// Created by Sunscreen under the AGPLv3 license; see the README at the
+// repository root for more information
+
 #include <stdint.h>
 
 // Test basic 64-bit constant usage
