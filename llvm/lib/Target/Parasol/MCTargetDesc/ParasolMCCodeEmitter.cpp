@@ -92,14 +92,8 @@ ParasolMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
     return MO.getImm();
 
   assert(MO.isExpr());
-  // SUNSCREEN TODO: Reenable?
-  // if (const ParasolMCExpr *SExpr = dyn_cast<ParasolMCExpr>(Expr)) {
-  //   MCFixupKind Kind = (MCFixupKind)SExpr->getFixupKind();
-  //   Fixups.push_back(MCFixup::create(0, Expr, Kind));
-  //   return 0;
-  // }
 
-  auto Expr = MO.getExpr();
+  const MCExpr *Expr = MO.getExpr();
 
   switch (MI.getOpcode()) {
   case Parasol::BRZ:
@@ -110,6 +104,10 @@ ParasolMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   case Parasol::BR:
     Fixups.push_back(
         MCFixup::create(0, Expr, MCFixupKind(Parasol::fixup_br_imm)));
+    break;
+  case Parasol::LOAD:
+    Fixups.push_back(
+        MCFixup::create(0, Expr, MCFixupKind(Parasol::fixup_load_addr)));
     break;
   default:
     llvm_unreachable("Opcode should not need fixups");
@@ -122,10 +120,9 @@ unsigned
 ParasolMCCodeEmitter::getCallTargetOpValue(const MCInst &MI, unsigned OpNo,
                                            SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {
-  const MCOperand &MO = MI.getOperand(OpNo);
-  const MCExpr *Expr = MO.getExpr();
-
-  return 0;
+  // TODO: Implement call target encoding when call instructions are supported
+  llvm_unreachable("Call instructions not yet implemented - "
+                   "instruction selector incorrectly emitted a call");
 }
 
 unsigned
@@ -134,7 +131,7 @@ ParasolMCCodeEmitter::getBranchTargetOpValue(const MCInst &MI, unsigned OpNo,
                                              const MCSubtargetInfo &STI) const {
   const MCOperand &MO = MI.getOperand(OpNo);
   if (MO.isReg() || MO.isImm())
-    getMachineOpValue(MI, MO, Fixups, STI);
+    return getMachineOpValue(MI, MO, Fixups, STI);
 
   return 0;
 }

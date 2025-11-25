@@ -241,5 +241,6 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/emacs,vim,visualstudiocode,macos,windows,linux,direnv
 .claude/
+CLAUDE.md
 releases/
 sunscreen-llvm-source.tar.gz

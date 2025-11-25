@@ -7,6 +7,7 @@ namespace llvm::Parasol {
 enum Fixups {
   fixup_br_one_reg_imm = FirstTargetFixupKind,
   fixup_br_imm,
+  fixup_load_addr,
 
   // Marker
   LastTargetFixupKind,

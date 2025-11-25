@@ -4,7 +4,7 @@
 { lib, stdenv, fetchurl, autoPatchelfHook, zlib }:
 
 let
-  version = "2025.11.21";
+  version = "2025.11.24";
   fileVersion = builtins.replaceStrings [ "." ] [ "-" ] version;
   urlBase =
     "https://github.com/Sunscreen-tech/sunscreen-llvm/releases/download/v${version}";

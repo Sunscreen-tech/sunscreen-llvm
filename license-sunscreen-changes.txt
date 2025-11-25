@@ -6,6 +6,7 @@ Major Changes
 
 - Add support for the Parasol FHE processor.
 - Add `[[clang::encrypted]]` and `[[clang::fhe_circuit]]` to clang to define what functions should be compiled for the Parasol processor and what arguments to a function are expected to be encrypted.
+- Add 64-bit and 128-bit constant support via constant pools for the Parasol backend.
 
 
 Files changed
@@ -106,6 +107,7 @@ llvm/lib/Target/Parasol/MCTargetDesc/CMakeLists.txt
 llvm/lib/Target/Parasol/MCTargetDesc/LLVMBuild.txt
 llvm/lib/Target/Parasol/MCTargetDesc/ParasolAsmBackend.cpp
 llvm/lib/Target/Parasol/MCTargetDesc/ParasolELFObjectWriter.cpp
+llvm/lib/Target/Parasol/MCTargetDesc/ParasolFixupKinds.h
 llvm/lib/Target/Parasol/MCTargetDesc/ParasolInstPrinter.cpp
 llvm/lib/Target/Parasol/MCTargetDesc/ParasolInstPrinter.h
 llvm/lib/Target/Parasol/MCTargetDesc/ParasolMCAsmInfo.cpp
@@ -157,6 +159,9 @@ llvm/utils/gn/secondary/llvm/lib/Target/targets.gni
 utils/bazel/llvm_configs/llvm-config.h.cmake
 parasol-tests/.gitignore
 parasol-tests/run_tests.sh
+parasol-tests/test_alignment.c
 parasol-tests/test_array_reductions.c
 parasol-tests/test_array_sort.c
+parasol-tests/test_large_constants.c
+parasol-tests/test_parasol_compilation.c
 parasol-tests/test_utilities.c

@@ -22,6 +22,10 @@ typedef unsigned int uint32_t;
 typedef int int32_t;
 typedef unsigned long long uint64_t;
 typedef long long int64_t;
+#ifdef __SIZEOF_INT128__
+typedef unsigned __int128 uint128_t;
+typedef __int128 int128_t;
+#endif
 
 // Conditional selector functions
 // On Parasol target: use FHE-friendly cmux instruction
@@ -70,7 +74,8 @@ DEFINE_SELECT(32)
 DEFINE_SELECT(64)
 
 // Absolute value functions (signed)
-// Note: abs64 omitted - requires 64-bit shift operation (>> 63) not supported by parasol target
+// Note: abs64 omitted - requires 64-bit shift operation (>> 63) not supported
+// by parasol target
 #define abs8(x) iselect8((x) < 0, -(x), (x))
 #define abs16(x) iselect16((x) < 0, -(x), (x))
 #define abs32(x) iselect32((x) < 0, -(x), (x))
@@ -134,10 +139,10 @@ DEFINE_SQRT(sqrt32, uint32_t, uint16_t, 32768, select16)
 #define iclamp64(x, min_val, max_val) imin64(imax64((x), (min_val)), (max_val))
 
 // Sign functions - Returns -1, 0, or 1 based on sign
-// Note: sign64 omitted - generates 64-bit constant (-1) not supported by parasol target
 #define sign8(x) iselect8((x) < 0, -1, iselect8((x) > 0, 1, 0))
 #define sign16(x) iselect16((x) < 0, -1, iselect16((x) > 0, 1, 0))
 #define sign32(x) iselect32((x) < 0, -1, iselect32((x) > 0, 1, 0))
+#define sign64(x) iselect64((x) < 0, -1LL, iselect64((x) > 0, 1LL, 0LL))
 
 // Conditional swap - Swaps values if condition is true
 #define cswap8(cond, a, b)                                                     \
@@ -206,7 +211,8 @@ DEFINE_SQRT(sqrt32, uint32_t, uint16_t, 32768, select16)
   } while (0)
 
 // Average/midpoint functions (unsigned) - Avoids overflow
-// Note: avg64 omitted - requires 64-bit shift operation (>> 1) not supported by parasol target
+// Note: avg64 omitted - requires 64-bit shift operation (>> 1) not supported by
+// parasol target
 #define avg8(a, b) ((uint8_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
 #define avg16(a, b) ((uint16_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
 #define avg32(a, b) ((uint32_t)(((a) & (b)) + (((a) ^ (b)) >> 1)))
@@ -217,20 +223,23 @@ DEFINE_SQRT(sqrt32, uint32_t, uint16_t, 32768, select16)
 #define absdiff32(a, b) select32((a) > (b), (a) - (b), (b) - (a))
 #define absdiff64(a, b) select64((a) > (b), (a) - (b), (b) - (a))
 
-// Note: iabsdiff64 omitted - generates 64-bit shift (>> 63) during optimization, not supported by parasol target
+// Note: iabsdiff64 omitted - generates 64-bit shift (>> 63) during
+// optimization, not supported by parasol target
 #define iabsdiff8(a, b) ((uint8_t)iselect8((a) > (b), (a) - (b), (b) - (a)))
 #define iabsdiff16(a, b) ((uint16_t)iselect16((a) > (b), (a) - (b), (b) - (a)))
 #define iabsdiff32(a, b) ((uint32_t)iselect32((a) > (b), (a) - (b), (b) - (a)))
 
 // Saturating arithmetic (clamps instead of wrapping on overflow/underflow)
-// Note: sadd64, ssub64 omitted - require 64-bit constants not supported by parasol target
-#define sadd8(a, b) select8((a) > (uint8_t)(255U - (b)), 255, (a) + (b))
-#define sadd16(a, b) select16((a) > (uint16_t)(65535U - (b)), 65535, (a) + (b))
-#define sadd32(a, b) select32((a) > (4294967295U - (b)), 4294967295U, (a) + (b))
+#define sadd8(a, b) select8((a) > (uint8_t)(0xFFU - (b)), 0xFF, (a) + (b))
+#define sadd16(a, b) select16((a) > (uint16_t)(0xFFFFU - (b)), 0xFFFF, (a) + (b))
+#define sadd32(a, b) select32((a) > (0xFFFFFFFFU - (b)), 0xFFFFFFFFU, (a) + (b))
+#define sadd64(a, b)                                                           \
+  select64((a) > (0xFFFFFFFFFFFFFFFFULL - (b)), 0xFFFFFFFFFFFFFFFFULL, (a) + (b))
 
 #define ssub8(a, b) select8((a) < (b), 0, (a) - (b))
 #define ssub16(a, b) select16((a) < (b), 0, (a) - (b))
 #define ssub32(a, b) select32((a) < (b), 0, (a) - (b))
+#define ssub64(a, b) select64((a) < (b), 0, (a) - (b))
 
 // Signed saturating arithmetic (clamps to INT_MIN/INT_MAX)
 #define DEFINE_ISADD(SUFFIX, TYPE, UTYPE, SELECT_FUNC, MIN_VAL, MAX_VAL)       \
@@ -289,17 +298,19 @@ DEFINE_POW(i32, int32_t, iselect32)
 DEFINE_POW(i64, int64_t, iselect64)
 
 // Parity and utility bit checks
-// Note: is_even64, is_odd64 omitted - require 64-bit constant (1) not supported by parasol target
 #define is_even8(x) (((x) & 1) == 0)
 #define is_even16(x) (((x) & 1) == 0)
 #define is_even32(x) (((x) & 1) == 0)
+#define is_even64(x) (((x) & 1ULL) == 0)
 
 #define is_odd8(x) (((x) & 1) == 1)
 #define is_odd16(x) (((x) & 1) == 1)
 #define is_odd32(x) (((x) & 1) == 1)
+#define is_odd64(x) (((x) & 1ULL) == 1)
 
 // Bit extraction (returns the nth bit as a boolean)
-// Note: get_bit64 omitted - requires 64-bit shift operation not supported by parasol target
+// Note: get_bit64 omitted - requires 64-bit shift operation not supported by
+// parasol target
 static inline bool get_bit8(uint8_t value, unsigned int n) {
   return ((value >> n) & 0x1);
 }
@@ -375,8 +386,8 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 
 // Tree reduction for sum - uses wider accumulator to reduce overflow risk
 #define DEFINE_SUM_ARRAY(NAME, INPUT_TYPE, SUM_TYPE)                           \
-  static inline SUM_TYPE NAME##_array(                                         \
-      const INPUT_TYPE *arr, uint16_t len, SUM_TYPE *scratch) {                \
+  static inline SUM_TYPE NAME##_array(const INPUT_TYPE *arr, uint16_t len,     \
+                                      SUM_TYPE *scratch) {                     \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = (SUM_TYPE)arr[i];                                           \
     }                                                                          \
@@ -505,7 +516,8 @@ GENERATE_ARRAY_OPS_UNSIGNED(32)
 //
 // Choosing accumulator size:
 //   - Known small arrays or bounded sums: use smallest safe accumulator
-//   - Unknown/dynamic array sizes: use next larger accumulator for safety margin
+//   - Unknown/dynamic array sizes: use next larger accumulator for safety
+//   margin
 //   - Critical correctness requirements: use largest accumulator (64-bit)
 //   - Performance-critical with validated bounds: use matching-size accumulator
 //
@@ -513,22 +525,34 @@ GENERATE_ARRAY_OPS_UNSIGNED(32)
 //   Example: sum8_16 safe for 65535/255 = 257 elements of max value
 
 // 8-bit input sum functions
-DEFINE_SUM_ARRAY(sum8_16, uint8_t, uint16_t)   // Up to 257 elements of max value (255)
-DEFINE_SUM_ARRAY(sum8_32, uint8_t, uint32_t)   // Up to 16M elements of max value
-DEFINE_SUM_ARRAY(sum8_64, uint8_t, uint64_t)   // Maximum safety (72+ quadrillion elements)
+DEFINE_SUM_ARRAY(sum8_16, uint8_t,
+                 uint16_t) // Up to 257 elements of max value (255)
+DEFINE_SUM_ARRAY(sum8_32, uint8_t, uint32_t) // Up to 16M elements of max value
+DEFINE_SUM_ARRAY(sum8_64, uint8_t,
+                 uint64_t) // Maximum safety (72+ quadrillion elements)
 
 // 16-bit input sum functions
-DEFINE_SUM_ARRAY(sum16_32, uint16_t, uint32_t) // Up to 65537 elements of max value (65535)
-DEFINE_SUM_ARRAY(sum16_64, uint16_t, uint64_t) // Maximum safety (281+ trillion elements)
+DEFINE_SUM_ARRAY(sum16_32, uint16_t,
+                 uint32_t) // Up to 65537 elements of max value (65535)
+DEFINE_SUM_ARRAY(sum16_64, uint16_t,
+                 uint64_t) // Maximum safety (281+ trillion elements)
 
 // 32-bit input sum functions
-DEFINE_SUM_ARRAY(sum32_64, uint32_t, uint64_t) // Safe default (4+ billion elements of max value)
-DEFINE_SUM_ARRAY(sum32_32, uint32_t, uint32_t) // Performance option (overflow possible, use with care)
+DEFINE_SUM_ARRAY(sum32_64, uint32_t,
+                 uint64_t) // Safe default (4+ billion elements of max value)
+DEFINE_SUM_ARRAY(
+    sum32_32, uint32_t,
+    uint32_t) // Performance option (overflow possible, use with care)
 
-// 64-bit input sum function
-DEFINE_SUM_ARRAY(sum64_64, uint64_t, uint64_t) // Same size (no 128-bit available, overflow possible)
+// 64-bit input sum functions
+DEFINE_SUM_ARRAY(sum64_64, uint64_t,
+                 uint64_t) // Same size (overflow possible, use with care)
+#ifdef __SIZEOF_INT128__
+DEFINE_SUM_ARRAY(sum64_128, uint64_t,
+                 uint128_t) // Safe default (18+ quintillion elements)
+#endif
 
-// Generate 64-bit unsigned functions except sum (sum64 would overflow without 128-bit accumulator)
+// Generate 64-bit unsigned functions
 DEFINE_MIN_ARRAY(64, uint64_t, select64)
 DEFINE_MAX_ARRAY(64, uint64_t, select64)
 DEFINE_COMPARE_SWAP(uint64, uint64_t, select64)
@@ -547,22 +571,33 @@ GENERATE_ARRAY_OPS_SIGNED(32)
 //   Negative: max_safe_elements = abs(MIN_ACCUMULATOR) / abs(MIN_INPUT_VALUE)
 
 // 8-bit input sum functions
-DEFINE_SUM_ARRAY(isum8_16, int8_t, int16_t)   // Up to 257 elements (32767/127, 32768/128)
-DEFINE_SUM_ARRAY(isum8_32, int8_t, int32_t)   // Up to 16M elements of extreme values
-DEFINE_SUM_ARRAY(isum8_64, int8_t, int64_t)   // Maximum safety
+DEFINE_SUM_ARRAY(isum8_16, int8_t,
+                 int16_t) // Up to 257 elements (32767/127, 32768/128)
+DEFINE_SUM_ARRAY(isum8_32, int8_t,
+                 int32_t) // Up to 16M elements of extreme values
+DEFINE_SUM_ARRAY(isum8_64, int8_t, int64_t) // Maximum safety
 
 // 16-bit input sum functions
-DEFINE_SUM_ARRAY(isum16_32, int16_t, int32_t) // Up to 65537 elements of extreme values
+DEFINE_SUM_ARRAY(isum16_32, int16_t,
+                 int32_t) // Up to 65537 elements of extreme values
 DEFINE_SUM_ARRAY(isum16_64, int16_t, int64_t) // Maximum safety
 
 // 32-bit input sum functions
-DEFINE_SUM_ARRAY(isum32_64, int32_t, int64_t) // Safe default (4+ billion elements)
-DEFINE_SUM_ARRAY(isum32_32, int32_t, int32_t) // Performance option (overflow possible, use with care)
+DEFINE_SUM_ARRAY(isum32_64, int32_t,
+                 int64_t) // Safe default (4+ billion elements)
+DEFINE_SUM_ARRAY(
+    isum32_32, int32_t,
+    int32_t) // Performance option (overflow possible, use with care)
 
-// 64-bit input sum function
-DEFINE_SUM_ARRAY(isum64_64, int64_t, int64_t) // Same size (no 128-bit available, overflow possible)
+// 64-bit input sum functions
+DEFINE_SUM_ARRAY(isum64_64, int64_t,
+                 int64_t) // Same size (overflow possible, use with care)
+#ifdef __SIZEOF_INT128__
+DEFINE_SUM_ARRAY(isum64_128, int64_t,
+                 int128_t) // Safe default (18+ quintillion elements)
+#endif
 
-// Generate 64-bit signed functions except sum (isum64 would overflow without 128-bit accumulator)
+// Generate 64-bit signed functions
 DEFINE_MIN_ARRAY_SIGNED(64)
 DEFINE_MAX_ARRAY_SIGNED(64)
 DEFINE_COMPARE_SWAP(int64, int64_t, iselect64)

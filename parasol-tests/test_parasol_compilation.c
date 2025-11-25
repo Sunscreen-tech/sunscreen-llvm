@@ -1,9 +1,12 @@
-// Test file to force instantiation of all parasol.h functions for parasol target
-// This ensures the compiler actually compiles each function rather than
-// optimizing them away with -O2
+// test_parasol_compilation.c - Force instantiation of all parasol.h functions
 //
-// This file should compile successfully for the parasol target. If compilation
-// fails, it indicates functions that use unsupported instructions.
+// Created by Sunscreen under the AGPLv3 license; see the README at the
+// repository root for more information
+//
+// This file forces the compiler to compile each function rather than
+// optimizing them away with -O2. This file should compile successfully for
+// the parasol target. If compilation fails, it indicates functions that use
+// unsupported instructions.
 
 #include "../clang/lib/Headers/parasol.h"
 
@@ -29,18 +32,22 @@ void *saturating_functions[] = {
     (void *)isadd8,
     (void *)isadd16,
     (void *)isadd32,
+    (void *)isadd64,
     (void *)issub8,
     (void *)issub16,
     (void *)issub32,
+    (void *)issub64,
 };
 
 void *pow_functions[] = {
     (void *)pow8,
     (void *)pow16,
     (void *)pow32,
+    (void *)pow64,
     (void *)powi8,
     (void *)powi16,
     (void *)powi32,
+    (void *)powi64,
 };
 
 void *get_bit_functions[] = {
@@ -81,6 +88,9 @@ void *sum_array_functions[] = {
     (void *)sum32_64_array,
     (void *)sum32_32_array,
     (void *)sum64_64_array,
+#ifdef __SIZEOF_INT128__
+    (void *)sum64_128_array,
+#endif
     // Signed sum functions with various accumulator sizes
     (void *)isum8_16_array,
     (void *)isum8_32_array,
@@ -90,6 +100,9 @@ void *sum_array_functions[] = {
     (void *)isum32_64_array,
     (void *)isum32_32_array,
     (void *)isum64_64_array,
+#ifdef __SIZEOF_INT128__
+    (void *)isum64_128_array,
+#endif
 };
 
 void *compare_swap_functions[] = {
@@ -187,32 +200,40 @@ uint32_t test_macros_uint32(uint32_t a, uint32_t b, uint32_t c) {
     return result;
 }
 
-// Note: 64-bit unsigned macro tests (abs64, avg64, sadd64, ssub64, is_even64,
-// is_odd64) removed due to parasol target limitations:
-// - abs64, avg64: use 64-bit shift operations (>> 1, >> 63)
-// - sadd64, ssub64, is_even64, is_odd64: use 64-bit constants
+// Note: 64-bit unsigned macro tests for abs64, avg64 still removed due to
+// parasol target limitations (use 64-bit shift operations >> 1, >> 63).
 //
-// 64-bit macros that DO work are tested below (using 32-bit init parameter
-// to avoid generating 64-bit constants):
-// - Unsigned: min64, max64, clamp64, absdiff64, cswap64
-// - Signed: imin64, imax64, iclamp64, icswap64
-// - Omitted: sign64 (generates 64-bit constant -1), iabsdiff64 (generates >> 63 shift)
+// 64-bit macros that work:
+// - Unsigned: min64, max64, clamp64, absdiff64, cswap64, sadd64, ssub64, is_even64, is_odd64
+// - Signed: imin64, imax64, iclamp64, icswap64, sign64
+// - Omitted: abs64, avg64 (64-bit shifts), iabsdiff64 (generates >> 63 shift)
 
-uint64_t test_macros_uint64(uint64_t a, uint64_t b, uint64_t c, uint32_t init) {
-    uint64_t result = (uint64_t)init;
+uint64_t test_macros_uint64(uint64_t a, uint64_t b, uint64_t c) {
+    uint64_t result = 0;
     result += min64(a, b);
     result += max64(a, b);
     result += clamp64(a, b, c);
     result += absdiff64(a, b);
+    result += sadd64(a, b);
+    result += ssub64(a, b);
+
+    // Test parity checks
+    if (is_even64(a)) {
+        result += 1;
+    }
+    if (is_odd64(a)) {
+        result += 1;
+    }
+
     return result;
 }
 
-int64_t test_macros_int64(int64_t a, int64_t b, int64_t c, int32_t init) {
-    int64_t result = (int64_t)init;
+int64_t test_macros_int64(int64_t a, int64_t b, int64_t c) {
+    int64_t result = 0;
     result += imin64(a, b);
     result += imax64(a, b);
     result += iclamp64(a, b, c);
-    // sign64 omitted - generates 64-bit constant (-1)
+    result += sign64(a);
     // iabsdiff64 omitted - generates 64-bit shift (>> 63) during optimization
     return result;
 }
@@ -288,11 +309,11 @@ int main(void) {
     test_macros_uint8(1, 2, 3);
     test_macros_uint16(1, 2, 3);
     test_macros_uint32(1, 2, 3);
-    test_macros_uint64(1, 2, 3, 0);
+    test_macros_uint64(1, 2, 3);
     test_macros_int8(1, 2, 3);
     test_macros_int16(1, 2, 3);
     test_macros_int32(1, 2, 3);
-    test_macros_int64(1, 2, 3, 0);
+    test_macros_int64(1, 2, 3);
     test_cswap();
 
     return 0;
