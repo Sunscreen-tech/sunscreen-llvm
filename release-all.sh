@@ -255,9 +255,9 @@ if [[ "$DRY_RUN" == "false" ]]; then
 
     cd "${OUTPUT_DIR}"
 
-    MACOS_HASH=$(nix-hash --type sha256 --base32 --flat "${MACOS_TARBALL}")
-    LINUX_ARM_HASH=$(nix-hash --type sha256 --base32 --flat "${LINUX_ARM_TARBALL}")
-    LINUX_X64_HASH=$(nix-hash --type sha256 --base32 --flat "${LINUX_X64_TARBALL}")
+    MACOS_HASH="sha256-$(nix-hash --type sha256 --base64 --flat "${MACOS_TARBALL}")"
+    LINUX_ARM_HASH="sha256-$(nix-hash --type sha256 --base64 --flat "${LINUX_ARM_TARBALL}")"
+    LINUX_X64_HASH="sha256-$(nix-hash --type sha256 --base64 --flat "${LINUX_X64_TARBALL}")"
 
     cd "${SCRIPT_DIR}"
 
