@@ -7884,10 +7884,10 @@ requirement:
   }];
 }
 
-def FheCircuitDocs : Documentation {
+def FheProgramDocs : Documentation {
   let Category = DocCatDecl;
   let Content = [{
-Specifies a function as an TFHE circuit
+Specifies a function as an FHE program.
 
 .. code-block:: c
 

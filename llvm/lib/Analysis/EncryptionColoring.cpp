@@ -25,7 +25,7 @@ EncryptionColoring EncryptionColoringAnalysis::run(Function &F,
                                                    FunctionAnalysisManager &M) {
     EncryptionColoring Coloring(F);
 
-    if (!F.hasFnAttribute(Attribute::FheCircuit)) {
+    if (!F.hasFnAttribute(Attribute::FheProgram)) {
         return Coloring;
     } else {
         Coloring.IsApplicable = true;

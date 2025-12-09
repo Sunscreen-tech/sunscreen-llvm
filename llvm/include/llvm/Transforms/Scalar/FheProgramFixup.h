@@ -5,14 +5,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef FHE_CIRCUIT_FIXUP
-#define FHE_CIRCUIT_FIXUP
+#ifndef FHE_PROGRAM_FIXUP
+#define FHE_PROGRAM_FIXUP
 
 #include "llvm/IR/PassManager.h"
 
 namespace llvm {
 
-class FheCircuitFixupPass : public PassInfoMixin<FheCircuitFixupPass> {
+class FheProgramFixupPass : public PassInfoMixin<FheProgramFixupPass> {
 public:
     PreservedAnalyses run(Function&F, FunctionAnalysisManager &M);
 

@@ -4466,10 +4466,10 @@ def CountedBy : InheritableAttr {
   }];
 }
 
-def FheCircuit : InheritableAttr {
+def FheProgram : InheritableAttr {
   let Spellings = [Clang<"fhe_program">, Declspec<"fhe_program">];
   let Subjects = SubjectList<[Function], ErrorDiag>;
-  let Documentation = [FheCircuitDocs];
+  let Documentation = [FheProgramDocs];
   let SimpleHandler = 1;
 }
 

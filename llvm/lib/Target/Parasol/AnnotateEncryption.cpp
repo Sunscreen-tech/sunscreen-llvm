@@ -69,7 +69,7 @@ void colorInstruction(const Instruction &Inst, ColorMap &Colors) {
 
 PreservedAnalyses AnnotateEncryptionPass::run(Function &F,
                                               FunctionAnalysisManager &FM) {
-  if (!F.hasFnAttribute(Attribute::FheCircuit)) {
+  if (!F.hasFnAttribute(Attribute::FheProgram)) {
     return PreservedAnalyses::all();
   }
 

@@ -2106,7 +2106,7 @@ static Attribute::AttrKind getAttrFromCode(uint64_t Code) {
   case bitc::ATTR_KIND_DEAD_ON_UNWIND:
     return Attribute::DeadOnUnwind;
   case bitc::ATTR_KIND_FHE_CIRCUIT:
-    return Attribute::FheCircuit;
+    return Attribute::FheProgram;
   case bitc::ATTR_KIND_ENCRYPTED:
     return Attribute::Encrypted;
   }

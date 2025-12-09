@@ -5,19 +5,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/Transforms/Scalar/FheCircuitFixup.h"
+#include "llvm/Transforms/Scalar/FheProgramFixup.h"
 
 using namespace llvm;
 
-PreservedAnalyses FheCircuitFixupPass::run(Function &F, FunctionAnalysisManager &M) {
-    if (!F.hasFnAttribute(Attribute::FheCircuit)) {
+PreservedAnalyses FheProgramFixupPass::run(Function &F, FunctionAnalysisManager &M) {
+    if (!F.hasFnAttribute(Attribute::FheProgram)) {
         return PreservedAnalyses::all();
     }
 
     for (auto &arg : F.args()) {
         auto ty = arg.getType();
         if (!ty->isPointerTy()) {
-            
+
         }
     }
 

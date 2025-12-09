@@ -108,8 +108,8 @@ def DisableSanitizerInstrumentation: EnumAttr<"disable_sanitizer_instrumentation
 def ElementType : TypeAttr<"elementtype", [ParamAttr]>;
 
 /// The given function is the entry point for a fully homomorphic encryption
-// program.
-def FheCircuit: EnumAttr<"fhe_program", [FnAttr]>;
+/// program.
+def FheProgram: EnumAttr<"fhe_program", [FnAttr]>;
 
 /// Indicates an input parameter on an `fhe_program` is encrypted.
 def Encrypted: EnumAttr<"encrypted", [ParamAttr]>;

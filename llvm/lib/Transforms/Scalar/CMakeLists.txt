@@ -16,7 +16,7 @@ add_llvm_component_library(LLVMScalarOpts
   DivRemPairs.cpp
   EarlyCSE.cpp
   EncryptedBranchLinearization.cpp
-  FheCircuitFixup.cpp
+  FheProgramFixup.cpp
   FlattenCFGPass.cpp
   Float2Int.cpp
   GuardWidening.cpp
