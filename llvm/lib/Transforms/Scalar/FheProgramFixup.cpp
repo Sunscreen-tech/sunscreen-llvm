@@ -9,17 +9,10 @@
 
 using namespace llvm;
 
-PreservedAnalyses FheProgramFixupPass::run(Function &F, FunctionAnalysisManager &M) {
-    if (!F.hasFnAttribute(Attribute::FheProgram)) {
-        return PreservedAnalyses::all();
-    }
+PreservedAnalyses FheProgramFixupPass::run(Function &F,
+                                           FunctionAnalysisManager &M) {
+  if (!F.hasFnAttribute(Attribute::FheProgram))
+    return PreservedAnalyses::all();
 
-    for (auto &arg : F.args()) {
-        auto ty = arg.getType();
-        if (!ty->isPointerTy()) {
-
-        }
-    }
-
-    return PreservedAnalyses::none();
+  return PreservedAnalyses::none();
 }

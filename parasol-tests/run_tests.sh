@@ -23,6 +23,7 @@ TEST_FILES=(
     "test_utilities.c"
     "test_array_reductions.c"
     "test_array_sort.c"
+    "test_type_metadata.c"
 )
 
 # Change to the parasol-tests directory
@@ -44,8 +45,8 @@ run_test() {
 
     echo -e "${YELLOW}Testing ${test_name} with ${compiler_name}...${NC}"
 
-    # Compile the test
-    if ! $compiler $extra_flags -o "$executable" "$test_file" 2>&1; then
+    # Compile the test (always include debug info with -g)
+    if ! $compiler -g $extra_flags -o "$executable" "$test_file" 2>&1; then
         echo -e "${RED}FAIL: Compilation failed for ${test_name} with ${compiler_name}${NC}"
         return 1
     fi
@@ -77,12 +78,43 @@ if [ -f "$PARASOL_CLANG" ]; then
     echo -e "${BLUE}Validating parasol.h with Parasol Target${NC}\n"
     echo -e "${YELLOW}Compiling all parasol.h functions for parasol target...${NC}"
 
-    if $PARASOL_CLANG -target parasol -O2 -c test_parasol_compilation.c -o /tmp/parasol_compilation_test.o 2>&1; then
+    if $PARASOL_CLANG -target parasol -g -O2 -c test_parasol_compilation.c -o /tmp/parasol_compilation_test.o 2>&1; then
         echo -e "${GREEN}PASS: All parasol.h functions compile for parasol target${NC}\n"
         rm -f /tmp/parasol_compilation_test.o
     else
         echo -e "${RED}FAIL: Some parasol.h functions do not compile for parasol target${NC}\n"
         echo -e "${RED}See errors above for details on which functions failed${NC}\n"
+        overall_status=1
+    fi
+
+    # Test .parasol_meta section emission for fhe_program functions
+    echo -e "${BLUE}Validating .parasol_meta Section Emission${NC}\n"
+    echo -e "${YELLOW}Compiling test_type_metadata.c for parasol target...${NC}"
+
+    LLVM_READOBJ="../build/bin/llvm-readobj"
+    TEMP_OBJ="/tmp/test_type_metadata.o"
+
+    if $PARASOL_CLANG -target parasol -g -O2 -c test_type_metadata.c -o "$TEMP_OBJ" 2>&1; then
+        # Verify .parasol_meta section exists
+        if $LLVM_READOBJ --sections "$TEMP_OBJ" 2>/dev/null | grep -q '.parasol_meta'; then
+            echo -e "${GREEN}PASS: .parasol_meta section present in ELF output${NC}"
+
+            # Verify the section has content (not empty)
+            # Parse the Size line which looks like "    Size: 976"
+            SECTION_SIZE=$($LLVM_READOBJ --sections "$TEMP_OBJ" 2>/dev/null | grep -A10 'Name: .parasol_meta' | grep 'Size:' | head -1 | sed 's/.*Size: *//' | tr -d ' ')
+            if [ -n "$SECTION_SIZE" ] && [ "$SECTION_SIZE" != "0" ]; then
+                echo -e "${GREEN}PASS: .parasol_meta section has content (size: ${SECTION_SIZE} bytes)${NC}\n"
+            else
+                echo -e "${RED}FAIL: .parasol_meta section is empty${NC}\n"
+                overall_status=1
+            fi
+        else
+            echo -e "${RED}FAIL: .parasol_meta section not found in ELF output${NC}\n"
+            overall_status=1
+        fi
+        rm -f "$TEMP_OBJ"
+    else
+        echo -e "${RED}FAIL: Compilation of test_type_metadata.c for parasol target failed${NC}\n"
         overall_status=1
     fi
 else

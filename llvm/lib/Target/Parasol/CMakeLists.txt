@@ -40,6 +40,7 @@ add_llvm_target(ParasolCodeGen
   ParasolISelDAGToDAG.cpp
   ParasolTargetLowering.cpp
   ParasolTargetMachine.cpp
+  ParasolTypeMetadata.cpp
 
   # SUNSCREEN TODO: Determine what needs to go into this field.
   LINK_COMPONENTS
