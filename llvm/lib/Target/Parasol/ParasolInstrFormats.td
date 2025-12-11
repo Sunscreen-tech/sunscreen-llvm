@@ -75,7 +75,8 @@ def OPC_JALR          : ParasolOpcode<0xBA>;
 // 0xC1 - 0xCE, target specific
 def OPC_CMUX          : ParasolOpcode<0xC1>;
 
-// 0xD1 - 0xDE, reserved
+// 0xD1 - 0xDE, architecture related
+def OPC_MALLOC        : ParasolOpcode<0xD1>;
 
 // 0xE1 - 0xEE, reserved
 
