@@ -2,7 +2,7 @@
 // This file tests that fhe_program functions emit proper type metadata
 // to the .parasol_meta ELF section.
 
-#include <stdint.h>
+#include "../clang/lib/Headers/parasol.h"
 
 // Simple struct for testing
 struct Point {
