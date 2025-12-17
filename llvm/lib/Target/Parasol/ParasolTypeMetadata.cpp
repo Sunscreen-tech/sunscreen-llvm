@@ -509,7 +509,7 @@ uint32_t ParasolTypeMetadata::visitSubroutineType(const DISubroutineType *STy,
     return *Cached;
 
   auto Elements = STy->getTypeArray();
-  if (Elements.empty())
+  if (Elements.size() == 0)
     return getVoidTypeId();
 
   // First element is return type, rest are parameters
