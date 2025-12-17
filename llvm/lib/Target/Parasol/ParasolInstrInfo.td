@@ -126,6 +126,22 @@ def MOV : ParasolInst<(outs IR:$dst), (ins IR:$src), "mv", "$dst, $src", []> {
 }
 
 //===----------------------------------------------------------------------===//
+// Memory allocation instructions
+//===----------------------------------------------------------------------===//
+def MALLOC : ParasolInst<(outs IR:$addr), (ins IR:$size), "malloc", "$addr, $size", []> {
+    bits<6> size;
+    bits<6> addr;
+
+    let hasSideEffects = 0;
+    let mayLoad = 0;
+    let mayStore = 0;
+
+    let Inst{19-14} = size;
+    let Inst{13-8} = addr;
+    let Opcode = OPC_MALLOC.Value;
+}
+
+//===----------------------------------------------------------------------===//
 // Truncation and zero extension
 //===----------------------------------------------------------------------===//
 

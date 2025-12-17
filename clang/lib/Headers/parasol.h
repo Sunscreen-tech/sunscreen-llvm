@@ -26,6 +26,7 @@ typedef long long int64_t;
 typedef unsigned __int128 uint128_t;
 typedef __int128 int128_t;
 #endif
+typedef unsigned int size_t;
 
 // Conditional selector functions
 // On Parasol target: use FHE-friendly cmux instruction
@@ -72,6 +73,16 @@ DEFINE_SELECT(8)
 DEFINE_SELECT(16)
 DEFINE_SELECT(32)
 DEFINE_SELECT(64)
+
+// Define malloc
+static inline void *malloc(size_t size) {
+  void *result;
+  asm volatile("malloc %0, %1"
+               : "=r"(result)
+               : "r"(size)
+               :);
+  return result;
+}
 
 // Absolute value functions (signed)
 // Note: abs64 omitted - requires 64-bit shift operation (>> 63) not supported
