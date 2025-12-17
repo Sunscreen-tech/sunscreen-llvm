@@ -9864,8 +9864,8 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     handleSimpleAttribute<UsingIfExistsAttr>(S, D, AL);
     break;
 
-  case ParsedAttr::AT_FheCircuit:
-    handleSimpleAttribute<FheCircuitAttr>(S, D, AL);
+  case ParsedAttr::AT_FheProgram:
+    handleSimpleAttribute<FheProgramAttr>(S, D, AL);
     break;
 
   case ParsedAttr::AT_Encrypted:

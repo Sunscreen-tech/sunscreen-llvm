@@ -11842,7 +11842,7 @@ bool ASTContext::DeclMustBeEmitted(const Decl *D) {
     // We never need to emit an uninstantiated function template.
     if (FD->getTemplatedKind() == FunctionDecl::TK_FunctionTemplate)
       return false;
-    if (FD->hasAttr<FheCircuitAttr>()) {
+    if (FD->hasAttr<FheProgramAttr>()) {
       return true;
     }
   } else if (isa<PragmaCommentDecl>(D))

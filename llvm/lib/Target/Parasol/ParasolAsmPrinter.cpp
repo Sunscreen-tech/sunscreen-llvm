@@ -6,22 +6,25 @@
 //===----------------------------------------------------------------------===//
 //
 // This file contains a printer that converts from our internal representation
-// of machine-dependent LLVM code to GAS-format CPU0 assembly language.
+// of machine-dependent LLVM code to GAS-format Parasol assembly language.
 //
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/ParasolInstPrinter.h"
 #include "ParasolInstrInfo.h"
 #include "ParasolTargetMachine.h"
+#include "ParasolTypeMetadata.h"
 #include "TargetInfo/ParasolTargetInfo.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineOperand.h"
+#include "llvm/IR/Module.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <memory>
 
 using namespace llvm;
 
@@ -29,15 +32,17 @@ using namespace llvm;
 
 namespace llvm {
 class ParasolAsmPrinter : public AsmPrinter {
+  std::unique_ptr<ParasolTypeMetadata> TypeMeta;
+
 public:
   explicit ParasolAsmPrinter(TargetMachine &TM,
                              std::unique_ptr<MCStreamer> Streamer)
       : AsmPrinter(TM, std::move(Streamer)) {}
 
-  virtual StringRef getPassName() const override {
-    return "Parasol Assembly Printer";
-  }
+  StringRef getPassName() const override { return "Parasol Assembly Printer"; }
 
+  bool doInitialization(Module &M) override;
+  void emitEndOfAsmFile(Module &M) override;
   void emitInstruction(const MachineInstr *MI) override;
 
   // This function must be present as it is internally used by the
@@ -189,6 +194,22 @@ MCOperand ParasolAsmPrinter::LowerSymbolOperand(const MachineOperand &MO,
         Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
 
   return MCOperand::createExpr(Expr);
+}
+
+bool ParasolAsmPrinter::doInitialization(Module &M) {
+  AsmPrinter::doInitialization(M);
+
+  // Create type metadata handler and process the module for fhe_program funcs
+  TypeMeta = std::make_unique<ParasolTypeMetadata>(this);
+  TypeMeta->processModule(M);
+
+  return false;
+}
+
+void ParasolAsmPrinter::emitEndOfAsmFile(Module &M) {
+  // Emit the .parasol_meta section with type info for fhe_program functions
+  if (TypeMeta)
+    TypeMeta->endModule();
 }
 
 // Force static initialization.

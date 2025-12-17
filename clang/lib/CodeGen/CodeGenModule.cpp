@@ -2402,8 +2402,8 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
   if (!hasUnwindExceptions(LangOpts))
     B.addAttribute(llvm::Attribute::NoUnwind);
 
-  if (D && D->hasAttr<FheCircuitAttr>())
-    B.addAttribute(llvm::Attribute::FheCircuit);
+  if (D && D->hasAttr<FheProgramAttr>())
+    B.addAttribute(llvm::Attribute::FheProgram);
 
   if (D && D->hasAttr<NoStackProtectorAttr>())
     ; // Do nothing.

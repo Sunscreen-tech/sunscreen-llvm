@@ -4,6 +4,14 @@ test_cswap
 test_avg
 test_array_reductions
 test_array_sort
+test_type_metadata
+test_type_metadata_host
+test_alignment
+test_large_constants
+test_parasol_compilation
+
+# Debug symbol bundles (macOS)
+*.dSYM/
 
 # Object files
 *.o

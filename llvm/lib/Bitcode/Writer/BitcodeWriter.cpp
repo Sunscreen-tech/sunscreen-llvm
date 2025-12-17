@@ -849,7 +849,7 @@ static uint64_t getAttrKindEncoding(Attribute::AttrKind Kind) {
     return bitc::ATTR_KIND_CORO_ONLY_DESTROY_WHEN_COMPLETE;
   case Attribute::DeadOnUnwind:
     return bitc::ATTR_KIND_DEAD_ON_UNWIND;
-  case Attribute::FheCircuit:
+  case Attribute::FheProgram:
     return bitc::ATTR_KIND_FHE_CIRCUIT;
   case Attribute::Encrypted:
     return bitc::ATTR_KIND_ENCRYPTED;

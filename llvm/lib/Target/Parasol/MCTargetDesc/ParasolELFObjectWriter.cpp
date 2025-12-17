@@ -16,8 +16,9 @@
 
 using namespace llvm;
 
-// Update this number whenever the instruction format changes
-#define ABI_VERSION 3
+// Update this number whenever the instruction format changes.
+// Version 4: Added .parasol_meta section for fhe_program type metadata.
+#define ABI_VERSION 4
 
 namespace {
 class ParasolELFObjectWriter : public MCELFObjectTargetWriter {

@@ -5,8 +5,9 @@ Major Changes
 =============
 
 - Add support for the Parasol FHE processor.
-- Add `[[clang::encrypted]]` and `[[clang::fhe_circuit]]` to clang to define what functions should be compiled for the Parasol processor and what arguments to a function are expected to be encrypted.
+- Add `[[clang::encrypted]]` and `[[clang::fhe_program]]` to clang to define what functions should be compiled for the Parasol processor and what arguments to a function are expected to be encrypted.
 - Add 64-bit and 128-bit constant support via constant pools for the Parasol backend.
+- Add function type metadata emission to .parasol_meta ELF section for fhe_program functions.
 
 
 Files changed
@@ -70,7 +71,7 @@ llvm/include/llvm/Object/ELFObjectFile.h
 llvm/include/llvm/Target/TargetSelectionDAG.td
 llvm/include/llvm/TargetParser/Triple.h
 llvm/include/llvm/Transforms/Scalar/EncryptedBranchLinearization.h
-llvm/include/llvm/Transforms/Scalar/FheCircuitFixup.h
+llvm/include/llvm/Transforms/Scalar/FheProgramFixup.h
 llvm/lib/Analysis/CMakeLists.txt
 llvm/lib/Analysis/EncryptionColoring.cpp
 llvm/lib/Bitcode/Reader/BitcodeReader.cpp
@@ -143,6 +144,8 @@ llvm/lib/Target/Parasol/ParasolTargetMachine.cpp
 llvm/lib/Target/Parasol/ParasolTargetMachine.h
 llvm/lib/Target/Parasol/ParasolTargetObjectFile.cpp
 llvm/lib/Target/Parasol/ParasolTargetObjectFile.h
+llvm/lib/Target/Parasol/ParasolTypeMetadata.cpp
+llvm/lib/Target/Parasol/ParasolTypeMetadata.h
 llvm/lib/Target/Parasol/TargetInfo/CMakeLists.txt
 llvm/lib/Target/Parasol/TargetInfo/LLVMBuild.txt
 llvm/lib/Target/Parasol/TargetInfo/ParasolTargetInfo.cpp
@@ -150,7 +153,7 @@ llvm/lib/Target/Parasol/TargetInfo/ParasolTargetInfo.h
 llvm/lib/TargetParser/Triple.cpp
 llvm/lib/Transforms/Scalar/CMakeLists.txt
 llvm/lib/Transforms/Scalar/EncryptedBranchLinearization.cpp
-llvm/lib/Transforms/Scalar/FheCircuitFixup.cpp
+llvm/lib/Transforms/Scalar/FheProgramFixup.cpp
 llvm/lib/Transforms/Utils/CodeExtractor.cpp
 llvm/test/CodeGen/Parasol/GlobalISel/add.ll
 llvm/test/CodeGen/Parasol/GlobalISel/void.ll
@@ -164,4 +167,6 @@ parasol-tests/test_array_reductions.c
 parasol-tests/test_array_sort.c
 parasol-tests/test_large_constants.c
 parasol-tests/test_parasol_compilation.c
+parasol-tests/test_type_metadata.c
 parasol-tests/test_utilities.c
+parasol-tests/parasol_meta_dump.py

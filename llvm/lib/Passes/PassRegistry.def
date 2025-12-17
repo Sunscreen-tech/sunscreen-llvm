@@ -335,7 +335,7 @@ FUNCTION_PASS("encrypted-branch-linearization", EncryptedBranchLinearizationPass
 FUNCTION_PASS("expand-large-div-rem", ExpandLargeDivRemPass(TM))
 FUNCTION_PASS("expand-large-fp-convert", ExpandLargeFpConvertPass(TM))
 FUNCTION_PASS("expand-memcmp", ExpandMemCmpPass(TM))
-FUNCTION_PASS("fhe-circuit-fixup", FheCircuitFixupPass())
+FUNCTION_PASS("fhe-program-fixup", FheProgramFixupPass())
 FUNCTION_PASS("fix-irreducible", FixIrreduciblePass())
 FUNCTION_PASS("flattencfg", FlattenCFGPass())
 FUNCTION_PASS("float2int", Float2IntPass())
