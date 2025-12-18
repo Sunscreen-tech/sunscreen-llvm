@@ -339,8 +339,6 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 //
 // Reductions:
 // - Require len > 0 (undefined behavior if len == 0)
-// - min/max require scratch buffer with len elements of same type as array
-// - sum/avg require scratch buffer with len elements of uint64_t/int64_t
 // - sum operations may overflow for large arrays (wraps modulo 2^64)
 //
 // Bitonic sort:
@@ -351,8 +349,8 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 
 // Tree reduction for min - finds minimum element in array
 #define DEFINE_MIN_ARRAY(SUFFIX, TYPE, SELECT_FUNC)                            \
-  static inline TYPE min##SUFFIX##_array(const TYPE *arr, uint16_t len,        \
-                                         TYPE *scratch) {                      \
+  static inline TYPE min##SUFFIX##_array(const TYPE *arr, uint16_t len) {      \
+    TYPE *scratch = (TYPE *)malloc(len * sizeof(TYPE));                        \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = arr[i];                                                     \
     }                                                                          \
@@ -374,8 +372,8 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 
 // Tree reduction for max - finds maximum element in array
 #define DEFINE_MAX_ARRAY(SUFFIX, TYPE, SELECT_FUNC)                            \
-  static inline TYPE max##SUFFIX##_array(const TYPE *arr, uint16_t len,        \
-                                         TYPE *scratch) {                      \
+  static inline TYPE max##SUFFIX##_array(const TYPE *arr, uint16_t len) {      \
+    TYPE *scratch = (TYPE *)malloc(len * sizeof(TYPE));                        \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = arr[i];                                                     \
     }                                                                          \
@@ -397,8 +395,8 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 
 // Tree reduction for sum - uses wider accumulator to reduce overflow risk
 #define DEFINE_SUM_ARRAY(NAME, INPUT_TYPE, SUM_TYPE)                           \
-  static inline SUM_TYPE NAME##_array(const INPUT_TYPE *arr, uint16_t len,     \
-                                      SUM_TYPE *scratch) {                     \
+  static inline SUM_TYPE NAME##_array(const INPUT_TYPE *arr, uint16_t len) {   \
+    SUM_TYPE *scratch = (SUM_TYPE *)malloc(len * sizeof(SUM_TYPE));            \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = (SUM_TYPE)arr[i];                                           \
     }                                                                          \
@@ -469,7 +467,9 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 // Signed type wrappers that add 'i' prefix correctly
 #define DEFINE_MIN_ARRAY_SIGNED(BITS)                                          \
   static inline int##BITS##_t imin##BITS##_array(                              \
-      const int##BITS##_t *arr, uint16_t len, int##BITS##_t *scratch) {        \
+      const int##BITS##_t *arr, uint16_t len) {                                \
+    int##BITS##_t *scratch =                                                   \
+        (int##BITS##_t *)malloc(len * sizeof(int##BITS##_t));                  \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = arr[i];                                                     \
     }                                                                          \
@@ -491,7 +491,9 @@ static inline bool get_bit32(uint32_t value, unsigned int n) {
 
 #define DEFINE_MAX_ARRAY_SIGNED(BITS)                                          \
   static inline int##BITS##_t imax##BITS##_array(                              \
-      const int##BITS##_t *arr, uint16_t len, int##BITS##_t *scratch) {        \
+      const int##BITS##_t *arr, uint16_t len) {                                \
+    int##BITS##_t *scratch =                                                   \
+        (int##BITS##_t *)malloc(len * sizeof(int##BITS##_t));                  \
     for (uint32_t i = 0; i < len; i++) {                                       \
       scratch[i] = arr[i];                                                     \
     }                                                                          \
