@@ -109,6 +109,10 @@ ParasolMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
     Fixups.push_back(
         MCFixup::create(0, Expr, MCFixupKind(Parasol::fixup_load_addr)));
     break;
+  case Parasol::JAL:
+    Fixups.push_back(
+      MCFixup::create(0, Expr, MCFixupKind(Parasol::fixup_jal_addr)));
+    break;
   default:
     llvm_unreachable("Opcode should not need fixups");
   }

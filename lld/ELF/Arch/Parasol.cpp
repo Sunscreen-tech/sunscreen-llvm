@@ -29,6 +29,11 @@ constexpr unsigned kBranchOffsetWidth = 32;
 constexpr uint64_t kBranchOffsetMask = ((1ULL << kBranchOffsetWidth) - 1)
                                        << kBranchOffsetShift;
 
+constexpr unsigned kCallOffsetShift = 14;
+constexpr unsigned kCallOffsetWidth = 32;
+constexpr uint64_t kCallOffsetMask = ((1ULL << kCallOffsetWidth) - 1)
+                                     << kCallOffsetShift;
+
 // Pre-computed value mask for relocation patching
 constexpr uint64_t kLoadAddrValueMask = (1ULL << kLoadAddrOffsetWidth) - 1;
 
@@ -78,6 +83,21 @@ void ParasolTargetInfo::relocate(uint8_t *loc, const Relocation &rel,
     support::endian::write64le(loc, insn);
     break;
   }
+  case ELF::R_Parasol_PC32: {
+    // PC-relative relocation at bit offset 14 for call (jal) instructions.
+    // The field is 32 bits wide to accommodate the signed offset.
+    int64_t signedVal = static_cast<int64_t>(val);
+    if (!isInt<32>(signedVal))
+      error(getErrorLocation(loc) + "relocation R_Parasol_PC32 out of range: " +
+            Twine(signedVal));
+    uint64_t insn = support::endian::read64le(loc);
+    // Use signedVal cast to uint32_t to preserve sign bits in encoding
+    uint32_t encodedOffset = static_cast<uint32_t>(signedVal);
+    insn = (insn & ~kCallOffsetMask) |
+           (static_cast<uint64_t>(encodedOffset) << kCallOffsetShift);
+    support::endian::write64le(loc, insn);
+    break;
+  }
   default:
     llvm_unreachable("unknown relocation");
   }
@@ -90,6 +110,7 @@ RelExpr ParasolTargetInfo::getRelExpr(RelType type, const Symbol &s,
     return R_NONE;
   case ELF::R_Parasol_32:
     return R_ABS;
+  case ELF::R_Parasol_PC32:
   case ELF::R_Parasol_PC24:
     return R_PC;
   default:

@@ -390,7 +390,111 @@ SDValue ParasolTargetLowering::LowerCallResult(
 SDValue
 ParasolTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                  SmallVectorImpl<SDValue> &InVals) const {
-  llvm_unreachable("Cannot lower call");
+  unsigned StackOffset = 0;
+
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc DL = CLI.DL;
+  SDValue Chain = CLI.Chain;
+
+  // Return value slot
+  bool HasRet = !CLI.RetTy->isVoidTy();
+  unsigned RetSize = 0;
+  Align RetAlign(1);
+  
+  if (HasRet) {
+    RetSize = DAG.getDataLayout().getTypeAllocSize(CLI.RetTy);
+    RetAlign = DAG.getDataLayout().getABITypeAlign(CLI.RetTy); // TODO: 2 for int32_t, wonder why
+    StackOffset = alignTo(StackOffset, RetAlign);
+    StackOffset += RetSize;
+  }
+
+  // Arguments
+  SmallVector<unsigned, 8> ArgOffsets;
+  for (auto &Arg : CLI.Outs) {
+    unsigned Size = Arg.VT.getStoreSize();
+    Align Align = Arg.Flags.getNonZeroOrigAlign();
+    StackOffset = alignTo(StackOffset, Align);
+    ArgOffsets.push_back(StackOffset);
+    StackOffset += Size;
+  }
+  
+  unsigned TotalStackSize = alignTo(StackOffset, 16);
+
+  SDValue SP = DAG.getRegister(Parasol::X2, MVT::i64);
+  
+  SDValue StackSizeVal =
+    DAG.getConstant(TotalStackSize, DL, MVT::i64);
+  
+  Chain = DAG.getNode(ISD::SUB, DL, MVT::i64,
+                      SP, StackSizeVal);
+  
+  // Chain = DAG.getCopyToReg(Chain, DL, Parasol::X2, Chain);
+  
+  // if (HasRet) {
+  //   SDValue RetAddr =
+  //     DAG.getNode(ISD::ADD, DL, MVT::i64,
+  //                 SP,
+  //                 DAG.getConstant(0, DL, MVT::i64));
+  
+  //   Chain = DAG.getCopyToReg(Chain, DL, Parasol::X10, RetAddr);
+  // }
+  
+
+  // for (unsigned i = 0; i < CLI.OutVals.size(); ++i) {
+  //   SDValue ArgVal = CLI.OutVals[i];
+  //   unsigned Offset = ArgOffsets[i];
+  
+  //   SDValue Addr =
+  //     DAG.getNode(ISD::ADD, DL, MVT::i64,
+  //                 SP,
+  //                 DAG.getConstant(Offset, DL, MVT::i64));
+  
+  //   Chain = DAG.getStore(Chain, DL, ArgVal, Addr,
+  //                        MachinePointerInfo());
+  // }
+  
+  // Chain = DAG.getNode(ParasolISD::CALL, DL,
+  //   DAG.getVTList(MVT::Other),
+  //   Chain, CLI.Callee);
+
+  // if (HasRet) {
+  //   SDValue RetAddr = DAG.getRegister(Parasol::X10, MVT::i64);
+  //   SDValue RetVal =
+  //     DAG.getLoad(CLI.Ins[0].VT, DL, Chain,
+  //                 RetAddr, MachinePointerInfo());
+  
+  //   InVals.push_back(RetVal);
+  // }
+
+  // SDValue OldSP =
+  // DAG.getNode(ISD::ADD, DL, MVT::i64,
+  //             SP,
+  //             StackSizeVal);
+
+  // Chain = DAG.getCopyToReg(Chain, DL, Parasol::X2, OldSP);
+
+  // return Chain;
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+
+  // Get the callee
+  SDValue Callee = DAG.getTargetGlobalAddress(
+      cast<GlobalAddressSDNode>(CLI.Callee)->getGlobal(),
+      DL,
+      PtrVT);
+
+  // Create CALL node
+  SDVTList NodeTys = DAG.getVTList(MVT::Other);
+  SDValue CallNode = DAG.getNode(ParasolISD::CALL, DL, NodeTys, Chain, Callee);
+
+  Chain = CallNode;
+
+  // Handle return value(s)
+  for (unsigned i = 0, e = CLI.Ins.size(); i != e; ++i) {
+      SDValue RetVal = DAG.getCopyFromReg(Chain, DL, Parasol::X10, CLI.Ins[i].VT);
+      InVals.push_back(RetVal);
+  }
+
+  return Chain;
 }
 
 /// HandleByVal - Every parameter *after* a byval parameter is passed
@@ -460,7 +564,17 @@ EVT ParasolTargetLowering::getSetCCResultType(const DataLayout &DL,
 
 SDValue ParasolTargetLowering::LowerGlobalAddress(SDValue Op,
                                                   SelectionDAG &DAG) const {
-  llvm_unreachable("Unsupported global address");
+  // const GlobalAddressSDNode *GA = cast<GlobalAddressSDNode>(Op);
+  // const GlobalValue *GV = GA->getGlobal();
+  // SDLoc DL(Op);
+
+  // // Create a target-specific global address node
+  // SDValue TGA = DAG.getTargetGlobalAddress(GV, DL, MVT::i64);
+
+  // // If you have a way to load a 64-bit immediate, do it here
+  // // Otherwise, just return the node and your instruction selection will handle it
+  // return TGA;
+  llvm_unreachable("GA");
 }
 
 SDValue ParasolTargetLowering::LowerConstantPool(SDValue Op,

@@ -55,6 +55,8 @@ unsigned ParasolELFObjectWriter::getRelocType(MCContext &Ctx,
       return IsPCRel ? ELF::R_Parasol_PC24 : ELF::R_Parasol_32;
     case Parasol::fixup_load_addr:
       return ELF::R_Parasol_32; // Absolute 32-bit address for constant pool
+    case Parasol::fixup_jal_addr:
+      return ELF::R_Parasol_PC32;
     default:
       llvm_unreachable("Unhandled Parasol fixup kind");
     }

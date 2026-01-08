@@ -40,10 +40,60 @@ void ParasolInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   // MBB.getParent()->getSubtarget().getRegisterInfo(); const
   // TargetRegisterClass *DestRegClass = TRI->getRegClass(DestReg);
   // TRI->getRegSizeInBits(*DestRegClass);
+  printf("COPY CALLED\n");
 
   MachineInstr *NewMI =
       BuildMI(MBB, I, MBB.findDebugLoc(I), get(Parasol::MOV), DestReg)
           .addReg(SrcReg, getKillRegState(KillSrc));
 
   return;
+}
+
+bool ParasolInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
+  MachineBasicBlock &MBB = *MI.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+
+  switch (MI.getOpcode()) {
+    case Parasol::PseudoCALL: {
+      const GlobalValue *GV = MI.getOperand(0).getGlobal();
+    
+      BuildMI(MBB, MI, DL, get(Parasol::JAL))
+        .addReg(Parasol::X1, RegState::Define)
+        .addGlobalAddress(GV);
+
+      MI.eraseFromParent();
+      return true;
+    }
+    case Parasol::ADJCALLSTACKDOWN:
+    case Parasol::ADJCALLSTACKUP: {
+      printf("CALLED\n");
+      int64_t Amount = MI.getOperand(0).getImm();
+  
+      if (Amount == 0) {
+        MI.eraseFromParent();
+        return true;
+      }
+  
+      // ADJCALLSTACKDOWN decreases SP
+      // ADJCALLSTACKUP increases SP
+      if (MI.getOpcode() == Parasol::ADJCALLSTACKDOWN)
+        Amount = -Amount;
+  
+      // Use a reserved temp register
+      Register Tmp = Parasol::X1;
+  
+      // li tmp, Amount
+      BuildMI(MBB, MI, DL, get(ParasolISD::ADD), Tmp)  // OBVIOUSLY WRONG
+          .addImm(Amount);
+  
+      // add sp, sp, tmp
+      BuildMI(MBB, MI, DL, get(ISD::ADD), Parasol::X2)
+          .addReg(Parasol::X2)
+          .addReg(Tmp);
+  
+      MI.eraseFromParent();
+      return true;
+    }
+  }
+  return false;
 }

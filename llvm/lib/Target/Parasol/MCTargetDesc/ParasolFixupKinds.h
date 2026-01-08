@@ -8,6 +8,7 @@ enum Fixups {
   fixup_br_one_reg_imm = FirstTargetFixupKind,
   fixup_br_imm,
   fixup_load_addr,
+  fixup_jal_addr,
 
   // Marker
   LastTargetFixupKind,

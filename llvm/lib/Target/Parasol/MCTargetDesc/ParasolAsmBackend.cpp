@@ -54,6 +54,7 @@ public:
         {"fixup_br_one_reg_imm", 14, 32, MCFixupKindInfo::FKF_IsPCRel},
         {"fixup_br_imm", 8, 32, MCFixupKindInfo::FKF_IsPCRel},
         {"fixup_load_addr", 27, 32, 0}, // Offset field for absolute address
+        {"fixup_jal_addr", 14, 32, MCFixupKindInfo::FKF_IsPCRel},
     };
 
     if (Kind < FirstTargetFixupKind)

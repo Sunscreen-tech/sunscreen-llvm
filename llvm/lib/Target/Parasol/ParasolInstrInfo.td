@@ -486,11 +486,46 @@ def JALR : ParasolInstI<OPC_JALR, (outs IR:$rd),
            Sched<[WriteJalr, ReadJalr]>;
 }
 
+def CallTarget : Operand<OtherVT>;
+
+def JAL : ParasolInstC<
+  OPC_JAL,
+  (outs IR:$rd),
+  (ins CallTarget:$target, variable_ops),
+  "jal",
+  "$rd, $target"
+> {
+  let isCall = 1;
+  let isTerminator = 1;
+  let hasSideEffects = 1;
+}
+
+// let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+// let isCall = 1 in
+// def JAL : ParasolInstL<OPC_JAL, (outs IR:$rd),
+//                    (ins CallTarget:$target),
+//                    "jal", "$rd, $target">,
+//            Sched<[WriteJal, ReadJal]>;
+// }
+
 let isReturn = 1, isBarrier = 1, isTerminator = 1 in
 def PseudoRET : Pseudo<(outs), (ins), [(parasol_ret_glue)]>,
                 PseudoInstExpansion<(JALR X0, X1, 0)>;
 
+let isCall = 1, isTerminator = 1, hasSideEffects = 1 in
+def PseudoCALL : Pseudo<(outs), (ins CallTarget:$target, variable_ops), []>;
+
 def : InstAlias<"ret",                   (JALR      X0,      X1, 0), 8>;
+
+// def ParasolCall : SDNode<"ParasolISD::CALL",
+//                          SDTypeProfile<0, 2, []>>;
+// def ParasolRet   : SDNode<"ParasolISD::Ret",  SDTNone>;
+
+// def : Pat<(ParasolCall IR:$rd i32imm:$fn),
+//           (JALR $rd, $fn)>;
+
+// def : Pat<(ParasolRet),
+//           (PseudoRET)>;
 
 //===----------------------------------------------------------------------===//
 // Patterns

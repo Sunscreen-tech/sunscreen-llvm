@@ -30,6 +30,8 @@ public:
                    const DebugLoc &DL, MCRegister DestReg, MCRegister SrcReg,
                    bool KillSrc) const override;
 
+  bool expandPostRAPseudo(MachineInstr &MI) const override;
+
 protected:
   const ParasolSubtarget &Subtarget;
 };

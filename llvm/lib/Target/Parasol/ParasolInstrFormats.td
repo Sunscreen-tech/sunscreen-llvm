@@ -71,6 +71,7 @@ def OPC_BRNZ          : ParasolOpcode<0xB1>;
 def OPC_BRZ           : ParasolOpcode<0xB2>;
 def OPC_BR            : ParasolOpcode<0xB5>;
 def OPC_JALR          : ParasolOpcode<0xBA>;
+def OPC_JAL           : ParasolOpcode<0xBB>;
 
 // 0xC1 - 0xCE, target specific
 def OPC_CMUX          : ParasolOpcode<0xC1>;
@@ -146,6 +147,17 @@ class ParasolInstI<ParasolOpcode opcode, dag outs, dag ins,
 
   let Inst{51-20} = imm32;
   let Inst{19-14} = rs1;
+  let Inst{13-8} = rd;
+  let Opcode = opcode.Value;
+}
+
+class ParasolInstC<ParasolOpcode opcode, dag outs, dag ins,
+              string opcodestr, string argstr>
+    : ParasolInst<outs, ins, opcodestr, argstr, []> {
+  bits<32> target;
+  bits<6> rd;
+
+  let Inst{45-14} = target;
   let Inst{13-8} = rd;
   let Opcode = opcode.Value;
 }

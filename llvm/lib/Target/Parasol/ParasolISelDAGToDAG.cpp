@@ -60,6 +60,18 @@ void ParasolDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, ResNode);
       return;
     }
+  } else if (Node->getOpcode() == ParasolISD::CALL) {
+    SDLoc DL(Node);
+  
+    SDNode *Call = CurDAG->getMachineNode(
+      Parasol::PseudoCALL,
+      DL,
+      MVT::Other,
+      Node->getOperand(1),
+      Node->getOperand(0));
+  
+    ReplaceNode(Node, Call);
+    return;
   }
 
   // Select the default instruction
